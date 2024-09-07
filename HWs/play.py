@@ -99,7 +99,7 @@ if cohere_key and 'client' in locals():
 
     try:
         # Generate summary using Cohere
-        events = co.chat_stream(
+        events = client.chat_stream(
                     model='command-r',
                     message=prompt,
                     temperature=0,       

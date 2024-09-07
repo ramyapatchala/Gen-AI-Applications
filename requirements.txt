@@ -4,3 +4,4 @@ pymupdf
 bs4
 anthropic
 cohere
+python-dotenv

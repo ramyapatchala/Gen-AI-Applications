@@ -1,7 +1,10 @@
 import streamlit as st
 from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
+import requests
+from bs4 import BeautifulSoup
 
+# Function to read PDF files
 def read_pdf(file):
     """Function to read PDF content using PyMuPDF (fitz)."""
     document = ""
@@ -10,10 +13,22 @@ def read_pdf(file):
             document += page.get_text()
     return document
 
+# Function to read content from a URL
+def read_url_content(url):
+    """Function to fetch and extract text from a URL."""
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        soup = BeautifulSoup(response.content, 'html.parser')
+        return soup.get_text()
+    except requests.RequestException as e:
+        st.error(f"Error reading {url}: {e}")
+        return None
+
 # Show title and description.
-st.title("📄 Document Question Answering - Q&A")
+st.title("📄 Document and URL Question Answering - Q&A")
 st.write(
-    "Upload a document below and ask a question about it – GPT will answer!"
+    "Upload a document below or enter a URL, then ask a question or generate a summary."
 )
 
 # Use the OpenAI API key stored in Streamlit secrets
@@ -32,6 +47,7 @@ if openai_api_key:
 else:
     st.error("API key not found in secrets!", icon="❌")
 
+# Proceed if API key is provided and valid
 if openai_api_key and 'client' in locals():
     
     # Sidebar: Provide the user with summary options.
@@ -52,6 +68,12 @@ if openai_api_key and 'client' in locals():
     # Choose model based on the checkbox
     model_choice = "gpt-4o" if use_advanced_model else "gpt-4o-mini"
     
+    # Let the user enter a URL or upload a file
+    st.header("Enter a URL or Upload a Document")
+
+    # Option to input URL
+    url = st.text_input("Enter the URL to summarize:")
+    
     # Let the user upload a file via `st.file_uploader`.
     uploaded_file = st.file_uploader(
         "Upload a document (.txt, .md, or .pdf)", type=("txt", "md", "pdf")
@@ -60,7 +82,11 @@ if openai_api_key and 'client' in locals():
     # Initialize document variable
     document = None
 
-    # Check if a file is uploaded
+    # Handle URL input if provided
+    if url:
+        document = read_url_content(url)
+
+    # Handle file upload if provided
     if uploaded_file:
         file_extension = uploaded_file.name.split('.')[-1].lower()
 
@@ -72,6 +98,8 @@ if openai_api_key and 'client' in locals():
         else:
             st.error("Unsupported file type.")
 
+    # If document is successfully loaded from URL or upload
+    if document:
         # Modify the question based on the selected summary option.
         if summary_option == "Summarize the document in 100 words":
             summary_instruction = "Summarize this document in 100 words."
@@ -101,3 +129,7 @@ if openai_api_key and 'client' in locals():
         
         except OpenAIError as e:
             st.error(f"Error generating summary: {e}", icon="❌")
+
+    # Reset document if neither file nor URL is provided
+    if not uploaded_file and not url:
+        st.info("Please upload a document or enter a URL to continue.", icon="📄")

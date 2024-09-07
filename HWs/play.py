@@ -32,8 +32,6 @@ st.write("Enter a PDF URL and select summary options below.")
 if cohere_key:
     try:
         co = cohere.Client(cohere_key)
-        # Tokenize the system message (not necessary for this use case).
-        # response = co.tokenize(text=system_message, model='command')
         st.sidebar.success("Cohere API key is valid!", icon="✅")
     except Exception as e:
         st.error(f"Invalid Cohere API key: {e}", icon="❌")
@@ -49,13 +47,11 @@ summary_options = {
 
 # Sidebar: Provide the user with summary options.
 st.sidebar.header("Summary Options")
-
 summary_option = st.sidebar.selectbox(
     "Select a summary style:",
     options=list(summary_options.keys()),  # Use keys as options
     format_func=lambda x: summary_options[x]
 )
-
 
 # Language selection.
 language_options = {
@@ -64,13 +60,12 @@ language_options = {
     "spanish": "Spanish"
 }
 
-# Sidebar: Provide a dropdown menu for language selection
+# Sidebar: Provide a dropdown menu for language selection.
 language_option = st.sidebar.selectbox(
     "Choose output language:",
     options=list(language_options.keys()),  # Use keys as options
     format_func=lambda x: language_options[x]
 )
-
 
 # User input for PDF URL.
 url = st.text_input("Enter PDF URL:")
@@ -85,18 +80,18 @@ if url:
 # Generate summary if document is available.
 if document:
     # Construct the summary instruction based on user selection.
-    if summary_option == summary_options['100_words']:
+    if summary_option == "100_words":
         summary_instruction = "Summarize in 100 words."
-    elif summary_option == summary_options['2_paragraphs']:
+    elif summary_option == "2_paragraphs":
         summary_instruction = "Summarize in 2 connecting paragraphs."
     else:
         summary_instruction = "Summarize in 5 bullet points."
 
     # Construct the language instruction.
     language_instruction = {
-        "English": "Please summarize in English.",
-        "French": "Veuillez résumer en français.",
-        "Spanish": "Por favor, resuma en español."
+        "english": "Please summarize in English.",
+        "french": "Veuillez résumer en français.",
+        "spanish": "Por favor, resuma en español."
     }[language_option]
 
     # Combine document, summary, and language instructions.
@@ -104,22 +99,15 @@ if document:
 
     try:
         # Generate summary using Cohere
-        response = co.chat_stream(
-            model='command-r',
-            message=prompt,
-            temperature=0,
+        response = co.generate(
+            model='command-xlarge-20220609',
+            prompt=prompt,
             max_tokens=1500,
-            chat_history=[{"role": "SYSTEM", "message": system_message}],
-            prompt_truncation='AUTO',
-            connectors=[],
-            documents=[]
+            temperature=0.5,
         )
 
-        response_text = ""
-        for event in response:
-            if event.event_type == "text-generation":
-                response_text += event.text
-        st.write(response_text)
+        # Output generated summary
+        st.write(response.generations[0].text)
 
     except Exception as e:
         st.error(f"Error generating summary: {e}", icon="❌")

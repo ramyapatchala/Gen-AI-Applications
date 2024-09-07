@@ -103,7 +103,6 @@ if url:
                         connectors=[],
                         documents=[]
             )
-            st.write(events)
             response_text=""
             for event in events:
                 if event.event_type=="text-generation":

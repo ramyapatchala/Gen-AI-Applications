@@ -24,9 +24,8 @@ def do_anthropic(model_to_use):
       temperature = 0,
       messages = msg_to_llm
     )
-    data = message.context[0].text
-    
-    return data
+  data = message.context[0].text
+  return data
 
 model = 'sonnet'
 which_LLM = "Anthropic--"+str(model)

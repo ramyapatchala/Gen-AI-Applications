@@ -99,16 +99,23 @@ if document:
 
     try:
         # Generate summary using Cohere
-        response = co.generate(
-            model='command-r',
-            prompt=prompt,
-            max_tokens=1500,
-            temperature=0.5,
+        events = co.chat_stream(
+                    model='command-r',
+                    message=prompt,
+                    temperature=0,       
+                    max_tokens=1500,
+                    chat_history=[{"role":"SYSTEM", "message":system_message}],
+                    prompt_truncation='AUTO',
+                    connectors=[],
+                    documents=[]
         )
 
-        # Output generated summary
-        st.write(response.generations[0].text)
-
+        response_text=""
+        for event in events:
+            if event.event_type=="text-generation":
+                response_text = response_text + str(event.text)
+        st.write(response_text)
+        
     except Exception as e:
         st.error(f"Error generating summary: {e}", icon="❌")
 

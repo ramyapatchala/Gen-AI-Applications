@@ -4,31 +4,28 @@ import fitz  # PyMuPDF for reading PDFs
 import requests
 from bs4 import BeautifulSoup
 
-# Function to read PDF files
-def read_pdf(file):
-    """Function to read PDF content using PyMuPDF (fitz)."""
-    document = ""
-    with fitz.open(stream=file.read(), filetype="pdf") as doc:
-        for page in doc:
-            document += page.get_text()
-    return document
-
-# Function to read content from a URL
-def read_url_content(url):
-    """Function to fetch and extract text from a URL."""
+# Function to read PDF files from a URL
+def read_pdf_from_url(url):
+    """Function to fetch and read PDF content from a URL using PyMuPDF (fitz)."""
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise an exception for HTTP errors
-        soup = BeautifulSoup(response.content, 'html.parser')
-        return soup.get_text()
+        with fitz.open(stream=response.content, filetype="pdf") as doc:
+            document = ""
+            for page in doc:
+                document += page.get_text()
+        return document
     except requests.RequestException as e:
-        st.error(f"Error reading {url}: {e}")
+        st.error(f"Error reading PDF from {url}: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Error processing the PDF: {e}")
         return None
 
 # Show title and description.
-st.title("📄 Document and URL Question Answering - Q&A")
+st.title("📄 PDF Summarizer from URL")
 st.write(
-    "Upload a document below or enter a URL, then ask a question or generate a summary."
+    "Enter a PDF URL below and ask for a summary."
 )
 
 # Use the OpenAI API key stored in Streamlit secrets
@@ -68,37 +65,17 @@ if openai_api_key and 'client' in locals():
     # Choose model based on the checkbox
     model_choice = "gpt-4o" if use_advanced_model else "gpt-4o-mini"
     
-    # Let the user enter a URL or upload a file
-    st.header("Enter a URL or Upload a Document")
+    # Let the user enter a URL for the PDF
+    url = st.text_input("Enter the URL to the PDF:")
 
-    # Option to input URL
-    url = st.text_input("Enter the URL to summarize:")
-    
-    # Let the user upload a file via `st.file_uploader`.
-    uploaded_file = st.file_uploader(
-        "Upload a document (.txt, .md, or .pdf)", type=("txt", "md", "pdf")
-    )
-    
     # Initialize document variable
     document = None
 
     # Handle URL input if provided
     if url:
-        document = read_url_content(url)
+        document = read_pdf_from_url(url)
 
-    # Handle file upload if provided
-    if uploaded_file:
-        file_extension = uploaded_file.name.split('.')[-1].lower()
-
-        # Read the uploaded file based on its type
-        if file_extension == 'txt' or file_extension == 'md':
-            document = uploaded_file.read().decode()
-        elif file_extension == 'pdf':
-            document = read_pdf(uploaded_file)
-        else:
-            st.error("Unsupported file type.")
-
-    # If document is successfully loaded from URL or upload
+    # If document is successfully loaded from URL
     if document:
         # Modify the question based on the selected summary option.
         if summary_option == "Summarize the document in 100 words":
@@ -130,6 +107,6 @@ if openai_api_key and 'client' in locals():
         except OpenAIError as e:
             st.error(f"Error generating summary: {e}", icon="❌")
 
-    # Reset document if neither file nor URL is provided
-    if not uploaded_file and not url:
-        st.info("Please upload a document or enter a URL to continue.", icon="📄")
+    # Reset document if no URL is provided
+    if not url:
+        st.info("Please enter a valid PDF URL to continue.", icon="🌐")

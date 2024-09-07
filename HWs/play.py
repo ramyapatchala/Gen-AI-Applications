@@ -29,73 +29,73 @@ st.title("📄 PDF Summarizer from URL")
 st.write("Enter a PDF URL and select summary options below.")
 
 # Validate Cohere API key.
-if cohere_key:
+def verify_cohere_key(api_key):
     try:
-        co = cohere.Client(cohere_key)
-        st.sidebar.success("Cohere API key is valid!", icon="✅")
+        client = cohere.Client(api_key)
+        # Try a simple API call
+        client.generate(prompt="Hello", max_tokens=5)
+        return True, "API key is valid"
     except Exception as e:
-        st.error(f"Invalid Cohere API key: {e}", icon="❌")
+        return False, str(e)
+
+is_valid, message = verify_cohere_key(cohere_key)
+
+if is_valid:
+    print("Cohere API key is valid!")
 else:
-    st.error("Cohere API key not found in secrets!", icon="❌")
+    print(f"Invalid Cohere API key: {message}")
 
-# Summary options.
-summary_options = {
-    "100_words": "Summarize in 100 words",
-    "2_paragraphs": "Summarize in 2 connecting paragraphs",
-    "5_bullet_points": "Summarize in 5 bullet points"
-}
+if cohere_key and 'client' in locals():
+    
+    # Sidebar: Provide the user with summary options.
+    st.sidebar.header("Summary Options")
+    
+    summary_option = st.sidebar.radio(
+        "Choose how you would like the document to be summarized:",
+        options=[
+            "Summarize the document in 100 words",
+            "Summarize the document in 2 connecting paragraphs",
+            "Summarize the document in 5 bullet points"
+        ]
+    )
+        
+    # Sidebar: Provide a dropdown menu for language selection
+    language_option = st.sidebar.selectbox(
+        "Choose the output language:",
+        options=["English", "French", "Spanish"]
+    )
+    
+    # Let the user enter a URL for the PDF
+    url = st.text_input("Enter the URL to the PDF:")
 
-# Sidebar: Provide the user with summary options.
-st.sidebar.header("Summary Options")
-summary_option = st.sidebar.selectbox(
-    "Select a summary style:",
-    options=list(summary_options.keys()),  # Use keys as options
-    format_func=lambda x: summary_options[x]
-)
+    # Initialize document variable
+    document = None
 
-# Language selection.
-language_options = {
-    "english": "English",
-    "french": "French",
-    "spanish": "Spanish"
-}
+    # Handle URL input if provided
+    if url:
+        document = read_pdf_from_url(url)
 
-# Sidebar: Provide a dropdown menu for language selection.
-language_option = st.sidebar.selectbox(
-    "Choose output language:",
-    options=list(language_options.keys()),  # Use keys as options
-    format_func=lambda x: language_options[x]
-)
+    # If document is successfully loaded from URL
+    if document:
+        # Modify the question based on the selected summary option.
+        if summary_option == "Summarize the document in 100 words":
+            summary_instruction = "Summarize this document in 100 words."
+        elif summary_option == "Summarize the document in 2 connecting paragraphs":
+            summary_instruction = "Summarize this document in 2 connecting paragraphs."
+        else:
+            summary_instruction = "Summarize this document in 5 bullet points."
+        
+        # Adjust the prompt to include the chosen language
+        if language_option == "English":
+            language_instruction = "Please summarize the document in English."
+        elif language_option == "French":
+            language_instruction = "Veuillez résumer le document en français."
+        else:
+            language_instruction = "Por favor, resuma el documento en español."
 
-# User input for PDF URL.
-url = st.text_input("Enter PDF URL:")
-
-# Initialize document variable.
-document = None
-
-# Fetch and process the PDF content when URL is provided.
-if url:
-    document = read_pdf_from_url(url)
-
-# Generate summary if document is available.
-if document:
-    # Construct the summary instruction based on user selection.
-    if summary_option == "100_words":
-        summary_instruction = "Summarize in 100 words."
-    elif summary_option == "2_paragraphs":
-        summary_instruction = "Summarize in 2 connecting paragraphs."
-    else:
-        summary_instruction = "Summarize in 5 bullet points."
-
-    # Construct the language instruction.
-    language_instruction = {
-        "english": "Please summarize in English.",
-        "french": "Veuillez résumer en français.",
-        "spanish": "Por favor, resuma en español."
-    }[language_option]
 
     # Combine document, summary, and language instructions.
-    prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
+    prompt = f"Here's a document: {document} \n\n---\n\n {summary_instruction} {language_instruction}"
 
     try:
         # Generate summary using Cohere

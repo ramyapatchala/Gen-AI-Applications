@@ -104,7 +104,6 @@ if document:
                     message=prompt,
                     temperature=0,       
                     max_tokens=1500,
-                    chat_history=[{"role":"SYSTEM", "message":system_message}],
                     prompt_truncation='AUTO',
                     connectors=[],
                     documents=[]

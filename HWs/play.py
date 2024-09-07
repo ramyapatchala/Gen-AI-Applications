@@ -64,11 +64,13 @@ language_options = {
     "spanish": "Spanish"
 }
 
+# Sidebar: Provide a dropdown menu for language selection
 language_option = st.sidebar.selectbox(
     "Choose output language:",
-    options=language_options.values(),
+    options=list(language_options.keys()),  # Use keys as options
     format_func=lambda x: language_options[x]
 )
+
 
 # User input for PDF URL.
 url = st.text_input("Enter PDF URL:")

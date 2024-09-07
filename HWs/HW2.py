@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
 import requests
-import anthropic  # For Claude
+import cohere  # For Cohere
 
 # Function to read PDF files from a URL
 def read_pdf_from_url(url):
@@ -30,7 +30,7 @@ st.write("Enter a PDF URL below and select your preferred language for the summa
 st.sidebar.header("LLM Options")
 llm_option = st.sidebar.selectbox(
     "Choose an LLM to use for generating the summary:",
-    options=["OpenAI (GPT-4)", "Claude (Anthropic)"]
+    options=["OpenAI (GPT-4)", "Cohere"]
 )
 
 # Sidebar: Provide the user with summary options.
@@ -63,7 +63,7 @@ if url:
 
 # LLM Key validation section.
 openai_api_key = st.secrets.get('key1')  # OpenAI API key
-claude_api_key = st.secrets.get('claude_key')  # Claude API key
+cohere_api_key = st.secrets.get('cohere_key')  # Cohere API key
 
 # Validate keys based on selected LLM.
 valid_key = False
@@ -75,14 +75,14 @@ if llm_option == "OpenAI (GPT-4)" and openai_api_key:
         valid_key = True
     except OpenAIError as e:
         st.sidebar.error(f"Invalid OpenAI key: {e}", icon="❌")
-elif llm_option == "Claude (Anthropic)" and claude_api_key:
+elif llm_option == "Cohere" and cohere_api_key:
     try:
-        client = anthropic.Anthropic(api_key=claude_api_key)
-        client.completions.create(model="claude-v1", prompt="test")  # Simple API call to verify key.
-        st.sidebar.success("Claude key is valid!", icon="✅")
+        cohere_client = cohere.Client(api_key=cohere_api_key)
+        cohere_client.check_token()  # Simple API call to verify key.
+        st.sidebar.success("Cohere key is valid!", icon="✅")
         valid_key = True
-    except Exception as e:
-        st.sidebar.error(f"Invalid Claude key: {e}", icon="❌")
+    except cohere.CohereError as e:
+        st.sidebar.error(f"Invalid Cohere key: {e}", icon="❌")
 
 # Proceed if the key is valid.
 if valid_key and document:
@@ -114,15 +114,12 @@ if valid_key and document:
                 stream=True,
             )
             st.write_stream(response)  # Stream OpenAI's response.
-        elif llm_option == "Claude (Anthropic)":
-            response = client.completions.create(
-                model="claude-v1",  # Specify the Claude model you want to use.
+        elif llm_option == "Cohere":
+            cohere_response = cohere_client.generate(
                 prompt=prompt,
-                max_tokens_to_sample=300,
-                stream=True
+                max_tokens=300  # Adjust the token limit as per the model's capabilities.
             )
-            for chunk in response:
-                st.write(chunk['completion'])
+            st.write(cohere_response.generations[0].text)  # Display the Cohere response.
     except Exception as e:
         st.error(f"Error generating summary: {e}", icon="❌")
 

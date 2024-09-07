@@ -50,6 +50,7 @@ def do_cohere():
 model="Cohere"
 start_time = time.time()
 content = do_cohere()
+st.write(content)
 output_info(content, start_time, model_info=model)
 st.write("done calcs...")
     

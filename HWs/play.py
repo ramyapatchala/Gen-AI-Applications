@@ -85,10 +85,10 @@ if url:
         # Adjust the prompt to include the chosen language
         if language_option == "English":
             language_instruction = "Please summarize the document in English."
-        elif language_option == "French":
-            language_instruction = "Veuillez résumer le document en français."
-        else:
+        elif language_option == "Spanish":
             language_instruction = "Por favor, resuma el documento en español."
+        else:
+            language_instruction = "Veuillez résumer le document en français."
 
         # Combine document, summary, and language instructions.
         prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"

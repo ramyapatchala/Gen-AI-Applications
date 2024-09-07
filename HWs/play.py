@@ -23,8 +23,8 @@ cohere_key = st.secrets['cohere_key']
 def do_cohere():
     cohere_key = st.secrets['cohere_key']
     co = cohere.Client(cohere_key)
-    response = co.tokenize(
-        text = system_message, model='command')
+    #response = co.tokenize(
+     #   text = system_message, model='command')
     events = co.chat_stream(
                     model='command-r',
                     message=question_to_ask,

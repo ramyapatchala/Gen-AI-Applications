@@ -92,7 +92,6 @@ if url:
 
         # Combine document, summary, and language instructions.
         prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
-        st.write(prompt)
         try:
         # Generate summary using Cohere
             events = client.chat_stream(
@@ -104,7 +103,7 @@ if url:
                         connectors=[],
                         documents=[]
             )
-    
+            st.write(events)
             response_text=""
             for event in events:
                 if event.event_type=="text-generation":

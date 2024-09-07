@@ -4,11 +4,11 @@ question = "Why are LLMs danger to society?"
 def do_anthropic(model_to_use):
   api_key = st.secrets['claude_key']
   if model_to_use == 'sonnet':
-    model= 'claude-3-sonnet-20240229"
+    model= "claude-3-sonnet-20240229"
   elif model_to_use == 'haiku':
-    model='claude-3-haiku-20230307'
+    model="claude-3-haiku-20230307"
   else:
-    model = 'claude-3-opus-20240229'
+    model = "claude-3-opus-20240229"
   client = anthropic.Anthropic(api_key = api_key)
 
 msg_to_llm=[

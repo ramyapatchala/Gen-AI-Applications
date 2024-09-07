@@ -28,63 +28,60 @@ def read_pdf_from_url(url):
 st.title("📄 PDF Summarizer from URL")
 st.write("Enter a PDF URL and select summary options below.")
 
-# Validate Cohere API key.
+# Function to validate Cohere API key.
 def verify_cohere_key(api_key):
     try:
         client = cohere.Client(api_key)
-        # Try a simple API call
+        # Try a simple API call to validate the key
         client.generate(prompt="Hello", max_tokens=5)
-        return True, "API key is valid"
+        return client, True, "API key is valid"
     except Exception as e:
-        return False, str(e)
+        return None, False, str(e)
 
-is_valid, message = verify_cohere_key(cohere_key)
+# Validate the Cohere API key
+client, is_valid, message = verify_cohere_key(cohere_key)
 
 if is_valid:
-    print("Cohere API key is valid!")
+    st.sidebar.success("Cohere API key is valid!", icon="✅")
 else:
-    print(f"Invalid Cohere API key: {message}")
+    st.sidebar.error(f"Invalid Cohere API key: {message}", icon="❌")
+    st.stop()
 
-if cohere_key and 'client' in locals():
-    
-    # Sidebar: Provide the user with summary options.
-    st.sidebar.header("Summary Options")
-    
-    summary_option = st.sidebar.radio(
-        "Choose how you would like the document to be summarized:",
-        options=[
-            "Summarize the document in 100 words",
-            "Summarize the document in 2 connecting paragraphs",
-            "Summarize the document in 5 bullet points"
-        ]
-    )
-        
-    # Sidebar: Provide a dropdown menu for language selection
-    language_option = st.sidebar.selectbox(
-        "Choose the output language:",
-        options=["English", "French", "Spanish"]
-    )
-    
-    # Let the user enter a URL for the PDF
-    url = st.text_input("Enter the URL to the PDF:")
+# Sidebar: Provide the user with summary options.
+st.sidebar.header("Summary Options")
+summary_option = st.sidebar.radio(
+    "Choose how you would like the document to be summarized:",
+    options=[
+        "Summarize the document in 100 words",
+        "Summarize the document in 2 connecting paragraphs",
+        "Summarize the document in 5 bullet points"
+    ]
+)
 
+# Sidebar: Provide a dropdown menu for language selection
+language_option = st.sidebar.selectbox(
+    "Choose the output language:",
+    options=["English", "French", "Spanish"]
+)
+
+# Let the user enter a URL for the PDF
+url = st.text_input("Enter the URL to the PDF:")
+
+# Ensure the `url` variable is properly initialized
+if url:
     # Initialize document variable
-    document = None
-
-    # Handle URL input if provided
-    if url:
-        document = read_pdf_from_url(url)
+    document = read_pdf_from_url(url)
 
     # If document is successfully loaded from URL
     if document:
-        # Modify the question based on the selected summary option.
+        # Modify the prompt based on the selected summary option.
         if summary_option == "Summarize the document in 100 words":
             summary_instruction = "Summarize this document in 100 words."
         elif summary_option == "Summarize the document in 2 connecting paragraphs":
             summary_instruction = "Summarize this document in 2 connecting paragraphs."
         else:
             summary_instruction = "Summarize this document in 5 bullet points."
-        
+
         # Adjust the prompt to include the chosen language
         if language_option == "English":
             language_instruction = "Please summarize the document in English."
@@ -93,31 +90,24 @@ if cohere_key and 'client' in locals():
         else:
             language_instruction = "Por favor, resuma el documento en español."
 
+        # Combine document, summary, and language instructions.
+        prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
 
-    # Combine document, summary, and language instructions.
-    prompt = f"Here's a document: {document} \n\n---\n\n {summary_instruction} {language_instruction}"
+        try:
+            # Generate summary using Cohere
+            response = client.generate(
+                model='command-xlarge-20220609',  # Use a valid model name
+                prompt=prompt,
+                max_tokens=500,  # Adjust max tokens based on your needs
+                temperature=0.5,
+            )
 
-    try:
-        # Generate summary using Cohere
-        events = client.chat_stream(
-                    model='command-r',
-                    message=prompt,
-                    temperature=0,       
-                    max_tokens=1500,
-                    prompt_truncation='AUTO',
-                    connectors=[],
-                    documents=[]
-        )
+            # Output generated summary
+            st.write(response.generations[0].text)
 
-        response_text=""
-        for event in events:
-            if event.event_type=="text-generation":
-                response_text = response_text + str(event.text)
-        st.write(response_text)
-        
-    except Exception as e:
-        st.error(f"Error generating summary: {e}", icon="❌")
-
-# Display message if no URL is provided.
-if not url:
+        except cohere.CohereError as e:
+            st.error(f"Error generating summary: {e}", icon="❌")
+        except Exception as e:
+            st.error(f"Unexpected error: {e}", icon="❌")
+else:
     st.info("Please enter a valid PDF URL to generate a summary.", icon="🌐")

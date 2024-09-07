@@ -3,6 +3,7 @@ from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
 import requests
 import cohere  # For Cohere
+from cohere.errors import CohereError
 
 # Function to read PDF files from a URL
 def read_pdf_from_url(url):

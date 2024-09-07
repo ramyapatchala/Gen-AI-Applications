@@ -92,7 +92,7 @@ if url:
 
         # Combine document, summary, and language instructions.
         prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
-
+        st.write(prompt)
         try:
         # Generate summary using Cohere
             events = client.chat_stream(

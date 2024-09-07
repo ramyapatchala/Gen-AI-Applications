@@ -2,7 +2,6 @@ import streamlit as st
 from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
 import requests
-from bs4 import BeautifulSoup
 
 # Function to read PDF files from a URL
 def read_pdf_from_url(url):
@@ -24,9 +23,7 @@ def read_pdf_from_url(url):
 
 # Show title and description.
 st.title("📄 PDF Summarizer from URL")
-st.write(
-    "Enter a PDF URL below and ask for a summary."
-)
+st.write("Enter a PDF URL below and select your preferred language for the summary.")
 
 # Use the OpenAI API key stored in Streamlit secrets
 openai_api_key = st.secrets['key1']
@@ -65,6 +62,12 @@ if openai_api_key and 'client' in locals():
     # Choose model based on the checkbox
     model_choice = "gpt-4o" if use_advanced_model else "gpt-4o-mini"
     
+    # Sidebar: Provide a dropdown menu for language selection
+    language_option = st.sidebar.selectbox(
+        "Choose the output language:",
+        options=["English", "French", "Spanish"]
+    )
+    
     # Let the user enter a URL for the PDF
     url = st.text_input("Enter the URL to the PDF:")
 
@@ -85,11 +88,19 @@ if openai_api_key and 'client' in locals():
         else:
             summary_instruction = "Summarize this document in 5 bullet points."
         
-        # Combine the document and summary instruction
+        # Adjust the prompt to include the chosen language
+        if language_option == "English":
+            language_instruction = "Please summarize the document in English."
+        elif language_option == "French":
+            language_instruction = "Veuillez résumer le document en français."
+        else:
+            language_instruction = "Por favor, resuma el documento en español."
+        
+        # Combine the document and summary instructions, including the language
         messages = [
             {
                 "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {summary_instruction}",
+                "content": f"Here's a document: {document} \n\n---\n\n {summary_instruction} {language_instruction}",
             }
         ]
         

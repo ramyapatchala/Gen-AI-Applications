@@ -3,3 +3,4 @@ openai
 pymupdf
 bs4
 anthropic
+cohere

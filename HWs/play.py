@@ -11,4 +11,4 @@ chat = co.chat(
     model="command"
 )
 
-print(chat)
+st.write(chat)

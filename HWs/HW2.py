@@ -88,19 +88,19 @@ elif llm_option == "Cohere" and cohere_api_key:
 if valid_key and document:
     # Modify the summary instruction based on the user's selection.
     if summary_option == "Summarize the document in 100 words":
-        summary_instruction = "Summarize this document in 100 words."
-    elif summary_option == "Summarize the document in 2 connecting paragraphs":
+        summary_instruction = "Summarize in 100 words."
+    elif summary_option == "Summarize in 2 concise paragraphs":
         summary_instruction = "Summarize this document in 2 connecting paragraphs."
     else:
-        summary_instruction = "Summarize this document in 5 bullet points."
+        summary_instruction = "Summarize in 5 bullet points."
     
     # Adjust the prompt to include the chosen language.
     if language_option == "English":
-        language_instruction = "Please summarize the document in English."
+        language_instruction = "Please summarize."
     elif language_option == "French":
-        language_instruction = "Veuillez résumer le document en français."
+        language_instruction = "Veuillez résumer."
     else:
-        language_instruction = "Por favor, resuma el documento en español."
+        language_instruction = "Por favor, resuma."
 
     # Combine the document and summary instructions, including the language.
     prompt = f"Here's a document: {document} \n\n---\n\n {summary_instruction} {language_instruction}"

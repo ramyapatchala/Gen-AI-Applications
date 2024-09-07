@@ -94,16 +94,23 @@ if url:
         prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
 
         try:
-            # Generate summary using Cohere
-            response = client.generate(
-                model='command-xlarge-20220609',  # Use a valid model name
-                prompt=prompt,
-                max_tokens=500,  # Adjust max tokens based on your needs
-                temperature=0.5,
+        # Generate summary using Cohere
+            events = co.chat_stream(
+                        model='command-r',
+                        message=prompt,
+                        temperature=0,       
+                        max_tokens=1500,
+                        prompt_truncation='AUTO',
+                        connectors=[],
+                        documents=[]
             )
+    
+            response_text=""
+            for event in events:
+                if event.event_type=="text-generation":
+                    response_text = response_text + str(event.text)
+            st.write(response_text)
 
-            # Output generated summary
-            st.write(response.generations[0].text)
         except Exception as e:
             st.error(f"Unexpected error: {e}", icon="❌")
 else:

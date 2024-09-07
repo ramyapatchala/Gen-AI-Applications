@@ -1,6 +1,8 @@
 import cohere
+cohere_key = st.secrets['cohere_key']
+
 co = cohere.Client(
-    api_key="YOUR_API_KEY",
+    api_key=cohere_key,
 )
 
 chat = co.chat(

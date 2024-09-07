@@ -117,7 +117,8 @@ if valid_key and document:
         elif llm_option == "Cohere":
             cohere_response = cohere_client.generate(
                 prompt=prompt,
-                max_tokens=300  # Adjust the token limit as per the model's capabilities.
+                max_tokens=200,  # Reduced max_tokens value
+                truncate="END"
             )
             st.write(cohere_response.generations[0].text)  # Display the Cohere response.
     except Exception as e:

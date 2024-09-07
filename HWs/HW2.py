@@ -1,11 +1,8 @@
 import streamlit as st
 from openai import OpenAI, OpenAIError
-import fitz  # PyMuPDF for reading PDFs
+import fitz
 import requests
 import cohere
-
-# Ensure CohereError is imported correctly.
-from cohere import CohereError
 
 # Function to read PDF content from a URL using PyMuPDF (fitz).
 def read_pdf_from_url(url):
@@ -78,23 +75,30 @@ openai_api_key = st.secrets.get('key1')
 cohere_api_key = st.secrets.get('cohere_key')
 
 # Validate and initialize the selected LLM.
-if llm_option == "OpenAI (GPT-4)" and openai_api_key:
-    try:
-        openai_client = OpenAI(api_key=openai_api_key)
-        openai_client.models.list()
-        st.sidebar.success("OpenAI key is valid!", icon="✅")
-    except OpenAIError as e:
-        st.sidebar.error(f"Invalid OpenAI key: {e}", icon="❌")
-elif llm_option == "Cohere" and cohere_api_key:
-    try:
-        cohere_client = cohere.Client(api_key=cohere_api_key)
-        cohere_client.check_token()
-        st.sidebar.success("Cohere key is valid!", icon="✅")
-    except CohereError as e:
-        st.sidebar.error(f"Invalid Cohere key: {e}", icon="❌")
+def initialize_llm(llm_option, api_key):
+    if llm_option == "OpenAI (GPT-4)" and api_key:
+        try:
+            client = OpenAI(api_key=api_key)
+            client.models.list()
+            st.sidebar.success(f"{llm_option} key is valid!", icon="✅")
+            return client
+        except OpenAIError as e:
+            st.sidebar.error(f"Invalid {llm_option} key: {e}", icon="❌")
+    elif llm_option == "Cohere" and api_key:
+        try:
+            client = cohere.Client(api_key=api_key)
+            client.check_token()
+            st.sidebar.success(f"{llm_option} key is valid!", icon="✅")
+            return client
+        except Exception as e:
+            st.sidebar.error(f"Error initializing {llm_option}: {e}", icon="❌")
+    return None
+
+openai_client = initialize_llm(llm_option, openai_api_key)
+cohere_client = initialize_llm(llm_option, cohere_api_key)
 
 # Generate summary if LLM is initialized and document is available.
-if document and ('openai_client' in locals() or 'cohere_client' in locals()):
+if document and (openai_client or cohere_client):
     # Construct the summary instruction based on user selection.
     if summary_option == summary_options['100_words']:
         summary_instruction = "Summarize in 100 words."
@@ -114,14 +118,14 @@ if document and ('openai_client' in locals() or 'cohere_client' in locals()):
     prompt = f"Document: {document}\n\n---\n\n{summary_instruction} {language_instruction}"
 
     try:
-        if llm_option == "OpenAI (GPT-4)":
+        if openai_client:
             response = openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
                 stream=True
             )
             st.write_stream(response)
-        elif llm_option == "Cohere":
+        elif cohere_client:
             cohere_response = cohere_client.generate(
                 prompt=prompt,
                 max_tokens=300

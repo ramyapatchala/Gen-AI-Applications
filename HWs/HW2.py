@@ -116,9 +116,7 @@ if valid_key and document:
             st.write_stream(response)  # Stream OpenAI's response.
         elif llm_option == "Cohere":
             cohere_response = cohere_client.generate(
-                prompt=prompt,
-                max_tokens=200,  # Reduced max_tokens value
-                truncate="END"
+                prompt=prompt
             )
             st.write(cohere_response.generations[0].text)  # Display the Cohere response.
     except Exception as e:

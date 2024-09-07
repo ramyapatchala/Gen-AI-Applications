@@ -74,8 +74,8 @@ if url:
     document = read_pdf_from_url(url)
 
 # LLM Key validation and initialization.
-openai_api_key = st.secrets.get('openai_api_key')
-cohere_api_key = st.secrets.get('cohere_api_key')
+openai_api_key = st.secrets.get('key1')
+cohere_api_key = st.secrets.get('cohere_key')
 
 # Validate and initialize the selected LLM.
 if llm_option == "OpenAI (GPT-4)" and openai_api_key:

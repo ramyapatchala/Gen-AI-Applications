@@ -3,7 +3,6 @@ from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
 import requests
 import cohere  # For Cohere
-from cohere.errors import CohereError
 
 # Function to read PDF files from a URL
 def read_pdf_from_url(url):
@@ -82,7 +81,7 @@ elif llm_option == "Cohere" and cohere_api_key:
         cohere_client.check_token()  # Simple API call to verify key.
         st.sidebar.success("Cohere key is valid!", icon="✅")
         valid_key = True
-    except cohere.CohereError as e:
+    except cohere.error.CohereError as e:
         st.sidebar.error(f"Invalid Cohere key: {e}", icon="❌")
 
 # Proceed if the key is valid.

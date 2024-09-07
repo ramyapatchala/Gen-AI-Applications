@@ -10,14 +10,11 @@ def read_pdf(file):
             document += page.get_text()
     return document
 
-# Set the page configuration at the very beginning of the script.
-st.set_page_config(page_title="Document Q&A")
-
 # Show title and description.
 st.title("📄 Document Question Answering - Q&A")
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys)."
 )
 
 # Ask user for their OpenAI API key via `st.text_input`.

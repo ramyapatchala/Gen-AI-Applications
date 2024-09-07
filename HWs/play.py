@@ -40,9 +40,6 @@ if cohere_key:
 else:
     st.error("Cohere API key not found in secrets!", icon="❌")
 
-# Sidebar: Summary Options
-st.sidebar.header("Summary Options")
-
 # Summary options.
 summary_options = {
     "100_words": "Summarize in 100 words",
@@ -50,11 +47,15 @@ summary_options = {
     "5_bullet_points": "Summarize in 5 bullet points"
 }
 
+# Sidebar: Provide the user with summary options.
+st.sidebar.header("Summary Options")
+
 summary_option = st.sidebar.selectbox(
     "Select a summary style:",
-    options=summary_options.values(),
+    options=list(summary_options.keys()),  # Use keys as options
     format_func=lambda x: summary_options[x]
 )
+
 
 # Language selection.
 language_options = {

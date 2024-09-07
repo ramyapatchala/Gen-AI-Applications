@@ -100,7 +100,7 @@ if document:
     try:
         # Generate summary using Cohere
         response = co.generate(
-            model='command-xlarge-20220609',
+            model='command-r',
             prompt=prompt,
             max_tokens=1500,
             temperature=0.5,

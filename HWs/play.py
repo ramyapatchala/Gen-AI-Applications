@@ -42,7 +42,7 @@ st.write("Enter a PDF URL below and select your preferred language for the summa
 if cohere_key:
     try:
         # Create an OpenAI client using the API key from secrets
-        client = Cohere(api_key=cohere_key)
+        client = cohere.client(api_key=cohere_key)
         # Try a simple API call to check if the key is valid
         client.models.list()
         st.success("Cohere API key is valid!", icon="✅")

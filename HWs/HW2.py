@@ -78,7 +78,7 @@ if llm_option == "OpenAI (GPT-4)" and openai_api_key:
 elif llm_option == "Cohere" and cohere_api_key:
     try:
         cohere_client = cohere.Client(api_key=cohere_api_key)
-        cohere_client.check_token()  # Simple API call to verify key.
+        cohere_client.validate_api_key()  # Simple API call to verify key.
         st.sidebar.success("Cohere key is valid!", icon="✅")
         valid_key = True
     except Exception as e:

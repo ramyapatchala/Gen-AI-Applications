@@ -91,7 +91,7 @@ if url:
             language_instruction = "Veuillez résumer le document en français."
 
         # Combine document, summary, and language instructions.
-        prompt = f"{summary_instruction} {language_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
+        prompt = f"{language_instruction} {summary_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
         try:
         # Generate summary using Cohere
             events = client.chat_stream(

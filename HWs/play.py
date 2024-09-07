@@ -104,9 +104,6 @@ if url:
 
             # Output generated summary
             st.write(response.generations[0].text)
-
-        except cohere.CohereError as e:
-            st.error(f"Error generating summary: {e}", icon="❌")
         except Exception as e:
             st.error(f"Unexpected error: {e}", icon="❌")
 else:

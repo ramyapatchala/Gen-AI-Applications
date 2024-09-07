@@ -46,7 +46,7 @@ if cohere_key:
         # Try a simple API call to check if the key is valid
         client.models.list()
         st.success("Cohere API key is valid!", icon="✅")
-    except OpenAIError as e:
+    except Exception as e:
         st.error(f"Invalid Cohere API key: {e}", icon="❌")
 else:
     st.error("API key not found in secrets!", icon="❌")

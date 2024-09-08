@@ -1,5 +1,5 @@
-streamlit==1.29.0
-mistralai==0.0.8
+streamlit
+mistralai
 openai
 pymupdf
 bs4

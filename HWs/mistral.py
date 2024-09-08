@@ -22,7 +22,7 @@ def do_mistral(model):
         # Get the chat response
         chat_response = client.chat(
             model=model,
-            messages=messages_to_LLM,
+            messages=messages_to_LLM
         )
         return chat_response.choices[0].message.content
     except Exception as e:

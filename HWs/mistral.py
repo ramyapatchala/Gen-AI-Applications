@@ -9,7 +9,7 @@ system_message = "You are a helpful assistant."
 
 def do_mistral(model):
     # Retrieve the API key from Streamlit secrets
-    api_key = st.secrets.get('mistral_key', None)
+    api_key = st.secrets['mistral_key']
     if not api_key:
         st.error("Mistral API key not found in Streamlit secrets.")
         return "Error: API key not found."

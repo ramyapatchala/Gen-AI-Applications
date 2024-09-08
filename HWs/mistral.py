@@ -3,9 +3,6 @@ import os
 from dotenv import load_dotenv
 from mistralai.client import MistralClient
 
-# Load environment variables from .env file
-load_dotenv()
-
 # Define the question and system message
 question = "Why are LLMs danger to society?"
 system_message = "You are a helpful assistant."
@@ -40,10 +37,7 @@ def do_mistral(model):
 model = 'mistral_large_latest'
 
 # Main app code
-def main():
-    st.title("Streamlit App with MistralAI")
-    content = do_mistral(model)
-    st.write(content)
+st.title("Streamlit App with MistralAI")
+content = do_mistral(model)
+st.write(content)
 
-if __name__ == "__main__":
-    main()

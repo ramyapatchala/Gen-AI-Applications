@@ -1,7 +1,8 @@
 import os
+import streamlit as st
 from mistralai import Mistral
 
-api_key = os.environ["MISTRAL_API_KEY"]
+api_key = st.secrets['mistral_key']
 model = "mistral-large-latest"
 
 client = Mistral(api_key=api_key)
@@ -15,4 +16,4 @@ chat_response = client.chat.complete(
         },
     ]
 )
-print(chat_response.choices[0].message.content)
+st.write(chat_response.choices[0].message.content)

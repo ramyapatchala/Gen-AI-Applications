@@ -11,7 +11,7 @@ def reset_state():
         del st.session_state[key]
 
 # Get the API key from the environment variables or the user
-api_key = os.getenv("MISTRAL_API_KEY")
+api_key = st.secrets['mistral_key']
 if not api_key:
     if "api_key" not in st.session_state:
         st.session_state["api_key"] = st.text_input("Enter your API key", type="password")

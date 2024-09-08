@@ -1,8 +1,8 @@
 streamlit
+mistralai
 openai
 pymupdf
 bs4
 anthropic
 cohere
 python-dotenv
-mistralai

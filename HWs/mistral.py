@@ -2,7 +2,6 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,10 +19,10 @@ def do_mistral(model):
 
     client = MistralClient(api_key=api_key)
 
-    # Prepare messages
+    # Prepare messages as dictionaries
     messages_to_LLM = [
-        ChatMessage(role='system', content=system_message),
-        ChatMessage(role='user', content=question)
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": question}
     ]
 
     try:

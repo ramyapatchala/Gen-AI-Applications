@@ -5,3 +5,4 @@ bs4
 anthropic
 cohere
 python-dotenv
+mistralai

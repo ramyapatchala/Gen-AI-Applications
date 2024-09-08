@@ -104,7 +104,9 @@ if url:
 
         # Combine document, summary, and language instructions.
         prompt = f"{language_instruction} {summary_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
-        try:
+        try:    
+            model = "mistral-large-latest"
+            client = Mistral(api_key=mistral_key)
             chat_response = client.chat.complete(
                     model= model,
                     messages = [

@@ -4,20 +4,28 @@ from dotenv import load_dotenv
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Define the question and system message
 question = "Why are LLMs danger to society?"
 system_message = "You are a helpful assistant."
 
 def do_mistral(model):
-    api_key = st.secrets['mistral_key']
+    # Retrieve the API key from Streamlit secrets
+    api_key = st.secrets.get('mistral_key', None)
+    if not api_key:
+        st.error("Mistral API key not found in Streamlit secrets.")
+        return "Error: API key not found."
+
     client = MistralClient(api_key=api_key)
-    
+
     # Prepare messages
     messages_to_LLM = [
         ChatMessage(role='system', content=system_message),
         ChatMessage(role='user', content=question)
     ]
-    
+
     try:
         # Get the chat response
         chat_response = client.chat(
@@ -29,6 +37,14 @@ def do_mistral(model):
         st.error(f"An error occurred: {e}")
         return "Error retrieving response."
 
+# Define the model to use
 model = 'mistral_large_latest'
-content = do_mistral(model)
-st.write(content)
+
+# Main app code
+def main():
+    st.title("Streamlit App with MistralAI")
+    content = do_mistral(model)
+    st.write(content)
+
+if __name__ == "__main__":
+    main()

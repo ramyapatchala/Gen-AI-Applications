@@ -1,16 +1,11 @@
-import os
 import streamlit as st
-from mistralai import Mistral
-
-import time
 import requests
 import fitz  # PyMuPDF for reading PDFs
+from openai import OpenAI, OpenAIError
+import cohere
+from mistralai import Mistral
 
-
-mistral_key = st.secrets['mistral_key']
-
-
-# Function to read PDF content from a URL using PyMuPDF (fitz).
+# Function to read PDF files from a URL
 def read_pdf_from_url(url):
     try:
         response = requests.get(url)
@@ -21,45 +16,130 @@ def read_pdf_from_url(url):
                 document += page.get_text()
         return document
     except requests.RequestException as e:
-        st.error(f"Error fetching PDF from {url}: {e}")
+        st.error(f"Error reading PDF from {url}: {e}")
         return None
     except Exception as e:
-        st.error(f"Error processing PDF: {e}")
+        st.error(f"Error processing the PDF: {e}")
         return None
 
-# Streamlit app title and description.
-st.title("📄 PDF Summarizer from URL")
-st.write("Enter a PDF URL and select summary options below.")
+# Function to verify OpenAI API key
+def verify_openai_key(api_key):
+    try:
+        client = OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
+    except OpenAIError as e:
+        return None, False, str(e)
 
-# Function to validate Cohere API key.
+# Function to verify Cohere API key
+def verify_cohere_key(api_key):
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
+# Function to verify Mistral API key
 def verify_mistral_key(api_key):
     client = Mistral(api_key=api_key)
     try:
-        # Perform a test call
         response = client.chat.complete(
             model="mistral-large-latest",
+            messages=[{"role": "user", "content": "Test message"}]
+        )
+        if response.choices:
+            return client, True, "API key is valid"
+        else:
+            return None, False, "API key is invalid or no response received"
+    except Exception as e:
+        return None, False, str(e)
+
+# Function to generate summary using OpenAI
+def generate_openai_summary(client, document, summary_instruction, language_instruction, use_advanced_model):
+    model_choice = "gpt-4o" if use_advanced_model else "gpt-4o-mini"
+    messages = [
+        {
+            "role": "user",
+            "content": f"Here's a document: {document} \n\n---\n\n {summary_instruction} {language_instruction}",
+        }
+    ]
+    try:
+        stream = client.chat.completions.create(
+            model=model_choice,
+            messages=messages,
+            stream=True,
+        )
+        return stream
+    except OpenAIError as e:
+        st.error(f"Error generating summary: {e}", icon="❌")
+        return None
+
+# Function to generate summary using Cohere
+def generate_cohere_summary(client, document, summary_instruction, language_instruction):
+    prompt = f"{language_instruction} {summary_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
+    try:
+        events = client.chat_stream(
+            model='command-r',
+            message=prompt,
+            temperature=0,       
+            max_tokens=1500,
+            prompt_truncation='AUTO',
+            connectors=[],
+            documents=[]
+        )
+        return events
+    except Exception as e:
+        st.error(f"Error generating summary: {e}", icon="❌")
+        return None
+
+# Function to generate summary using Mistral
+def generate_mistral_summary(client, document, summary_instruction, language_instruction):
+    prompt = f"{language_instruction} {summary_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
+    try:
+        chat_response = client.chat.complete(
+            model="mistral-large-latest",
             messages=[
-                {"role": "user", "content": "Test message"}
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
             ]
         )
-        # Check if response contains expected data
-        if response.choices:
-            return True, "API key is valid"
-        else:
-            return False, "API key is invalid or no response received"
+        return chat_response.choices[0].message.content
     except Exception as e:
-        return False, str(e)
+        st.error(f"Error generating summary: {e}", icon="❌")
+        return None
 
-# Verify the Mistral API key
-is_valid, message = verify_mistral_key(mistral_key)
+# Streamlit app
+st.title("📄 Multi-LLM PDF Summarizer from URL")
+st.write("Enter a PDF URL, select your LLM provider, and choose summary options.")
+
+# Sidebar: LLM provider selection
+st.sidebar.header("LLM Provider")
+llm_provider = st.sidebar.radio(
+    "Choose your LLM provider:",
+    options=["OpenAI", "Cohere", "Mistral"]
+)
+
+# API key verification
+if llm_provider == "OpenAI":
+    openai_api_key = st.secrets['key1']
+    client, is_valid, message = verify_openai_key(openai_api_key)
+elif llm_provider == "Cohere":
+    cohere_api_key = st.secrets['cohere_key']
+    client, is_valid, message = verify_cohere_key(cohere_api_key)
+else:  # Mistral
+    mistral_api_key = st.secrets['mistral_key']
+    client, is_valid, message = verify_mistral_key(mistral_api_key)
 
 if is_valid:
-    st.success(message)
+    st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
 else:
-    st.error(f"Invalid Mistral API key: {message}")
+    st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
+    st.stop()
 
-
-# Sidebar: Provide the user with summary options.
+# Sidebar: Summary options
 st.sidebar.header("Summary Options")
 summary_option = st.sidebar.radio(
     "Choose how you would like the document to be summarized:",
@@ -70,55 +150,47 @@ summary_option = st.sidebar.radio(
     ]
 )
 
-# Sidebar: Provide a dropdown menu for language selection
+# Language selection
 language_option = st.sidebar.selectbox(
     "Choose the output language:",
     options=["English", "French", "Spanish"]
 )
 
-# Let the user enter a URL for the PDF
+# OpenAI-specific option
+use_advanced_model = False
+if llm_provider == "OpenAI":
+    use_advanced_model = st.sidebar.checkbox("Use Advanced Model (GPT-4O)")
+
+# PDF URL input
 url = st.text_input("Enter the URL to the PDF:")
 
-# Ensure the `url` variable is properly initialized
 if url:
-    # Initialize document variable
     document = read_pdf_from_url(url)
-
-    # If document is successfully loaded from URL
     if document:
-        # Modify the prompt based on the selected summary option.
-        if summary_option == "Summarize the document in 100 words":
-            summary_instruction = "Summarize this document in 100 words."
-        elif summary_option == "Summarize the document in 2 connecting paragraphs":
-            summary_instruction = "Summarize this document in 2 connecting paragraphs."
-        else:
-            summary_instruction = "Summarize this document in 5 bullet points."
+        # Prepare summary and language instructions
+        summary_instruction = summary_option.replace("Summarize the document", "Summarize this document")
+        language_instruction = {
+            "English": "Please summarize the document in English.",
+            "French": "Veuillez résumer le document en français.",
+            "Spanish": "Por favor, resuma el documento en español."
+        }[language_option]
 
-        # Adjust the prompt to include the chosen language
-        if language_option == "English":
-            language_instruction = "Please summarize the document in English."
-        elif language_option == "Spanish":
-            language_instruction = "Por favor, resuma el documento en español."
-        else:
-            language_instruction = "Veuillez résumer le document en français."
-
-        # Combine document, summary, and language instructions.
-        prompt = f"{language_instruction} {summary_instruction} \n\n\n---\n\n Document: {document}\n\n---\n\n"
-        try:    
-            model = "mistral-large-latest"
-            client = Mistral(api_key=mistral_key)
-            chat_response = client.chat.complete(
-                    model= model,
-                    messages = [
-                        {
-                            "role": "user",
-                            "content": prompt,
-                        },
-                    ]
-                )
-            st.write(chat_response.choices[0].message.content)
-
-        except Exception as e:
-            st.error(f"Unexpected error: {e}", icon="❌")
+        # Generate summary based on selected LLM provider
+        if llm_provider == "OpenAI":
+            stream = generate_openai_summary(client, document, summary_instruction, language_instruction, use_advanced_model)
+            if stream:
+                st.write_stream(stream)
+        elif llm_provider == "Cohere":
+            events = generate_cohere_summary(client, document, summary_instruction, language_instruction)
+            if events:
+                response_text = ""
+                for event in events:
+                    if event.event_type == "text-generation":
+                        response_text += str(event.text)
+                st.write(response_text)
+        else:  # Mistral
+            summary = generate_mistral_summary(client, document, summary_instruction, language_instruction)
+            if summary:
+                st.write(summary)
 else:
     st.info("Please enter a valid PDF URL to generate a summary.", icon="🌐")

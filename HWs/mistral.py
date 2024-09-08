@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 from mistralai.client import MistralClient
+from mistralai import Mistral
 
 # Define the question and system message
 question = "Why are LLMs danger to society?"
@@ -14,7 +15,7 @@ def do_mistral(model):
         st.error("Mistral API key not found in Streamlit secrets.")
         return "Error: API key not found."
 
-    client = MistralClient(api_key=api_key)
+    client = Mistral(api_key=api_key)
 
     # Prepare messages as dictionaries
     messages_to_LLM = [

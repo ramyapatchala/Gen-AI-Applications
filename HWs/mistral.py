@@ -51,7 +51,7 @@ def verify_mistral_key(api_key):
         return False, str(e)
 
 # Verify the Mistral API key
-is_valid, message = verify_mistral_key(api_key)
+is_valid, message = verify_mistral_key(mistral_key)
 
 if is_valid:
     st.success(message)

@@ -198,13 +198,11 @@ if url:
         # Measure time and estimate cost (time is just an example; cost would depend on API usage)
         end_time = time.time()
         time_taken = round(end_time - start_time, 2)
-        cost = "$0.05"  # Example cost, should be calculated based on API usage
 
         # Display performance evaluation at the bottom of the sidebar
         with st.sidebar.expander("Performance Evaluation"):
             st.write(f"Model: {llm_provider}")
             st.write(f"Time taken: {time_taken} seconds")
-            st.write(f"Cost estimation: {cost}")
 
 else:
     st.info("Please enter a valid webpage URL to generate a summary.", icon="🌐")

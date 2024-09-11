@@ -1,25 +1,23 @@
 import streamlit as st
 import requests
-import fitz  # PyMuPDF for reading PDFs
+from bs4 import BeautifulSoup  # For extracting webpage content
 from openai import OpenAI, OpenAIError
 import cohere
 from mistralai import Mistral
 
-# Function to read PDF files from a URL
-def read_pdf_from_url(url):
+# Function to read webpage content from a URL
+def read_webpage_from_url(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
-        with fitz.open(stream=response.content, filetype="pdf") as doc:
-            document = ""
-            for page in doc:
-                document += page.get_text()
+        soup = BeautifulSoup(response.content, "html.parser")
+        document = " ".join([p.get_text() for p in soup.find_all("p")])
         return document
     except requests.RequestException as e:
-        st.error(f"Error reading PDF from {url}: {e}")
+        st.error(f"Error reading webpage from {url}: {e}")
         return None
     except Exception as e:
-        st.error(f"Error processing the PDF: {e}")
+        st.error(f"Error processing the webpage: {e}")
         return None
 
 # Function to verify OpenAI API key
@@ -112,8 +110,8 @@ def generate_mistral_summary(client, document, summary_instruction, language_ins
         return None
 
 # Streamlit app
-st.title("📄 Multi-LLM PDF Summarizer from URL")
-st.write("Enter a PDF URL, select your LLM provider, and choose summary options.")
+st.title("📄 Multi-LLM Webpage Summarizer from URL")
+st.write("Enter a webpage URL, select your LLM provider, and choose summary options.")
 
 # Sidebar: LLM provider selection
 st.sidebar.header("LLM Provider")
@@ -161,11 +159,11 @@ use_advanced_model = False
 if llm_provider == "OpenAI":
     use_advanced_model = st.sidebar.checkbox("Use Advanced Model (GPT-4O)")
 
-# PDF URL input
-url = st.text_input("Enter the URL to the PDF:")
+# Webpage URL input
+url = st.text_input("Enter the URL to the webpage:")
 
 if url:
-    document = read_pdf_from_url(url)
+    document = read_webpage_from_url(url)
     if document:
         # Prepare summary and language instructions
         summary_instruction = summary_option.replace("Summarize the document", "Summarize this document")
@@ -193,4 +191,4 @@ if url:
             if summary:
                 st.write(summary)
 else:
-    st.info("Please enter a valid PDF URL to generate a summary.", icon="🌐")
+    st.info("Please enter a valid webpage URL to generate a summary.", icon="🌐")

@@ -113,6 +113,8 @@ def generate_mistral_summary(client, document, summary_instruction, language_ins
 st.title("📄 Multi-LLM Webpage Summarizer from URL")
 st.write("Enter a webpage URL, select your LLM provider, and choose summary options.")
 
+st.sidebar.title("HW Manager")
+
 # Sidebar: LLM provider selection
 st.sidebar.header("LLM Provider")
 llm_provider = st.sidebar.radio(

@@ -1,7 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import os
-st.title("HW Manager")
+st.sidebar.title("HW Manager")
 page1 = st.Page("HWs/HW1.py", title="HW 1")
 page2 = st.Page("HWs/HW2.py", title="HW 2")
 

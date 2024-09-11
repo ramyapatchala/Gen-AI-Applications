@@ -165,6 +165,10 @@ url = st.text_input("Enter the URL to the webpage:")
 if url:
     document = read_webpage_from_url(url)
     if document:
+        # Start measuring performance (for example, using time module)
+        import time
+        start_time = time.time()
+
         # Prepare summary and language instructions
         summary_instruction = summary_option.replace("Summarize the document", "Summarize this document")
         language_instruction = {
@@ -190,5 +194,17 @@ if url:
             summary = generate_mistral_summary(client, document, summary_instruction, language_instruction)
             if summary:
                 st.write(summary)
+
+        # Measure time and estimate cost (time is just an example; cost would depend on API usage)
+        end_time = time.time()
+        time_taken = round(end_time - start_time, 2)
+        cost = "$0.05"  # Example cost, should be calculated based on API usage
+
+        # Display performance evaluation at the bottom of the sidebar
+        with st.sidebar.expander("Performance Evaluation"):
+            st.write(f"Model: {llm_provider}")
+            st.write(f"Time taken: {time_taken} seconds")
+            st.write(f"Cost estimation: {cost}")
+
 else:
     st.info("Please enter a valid webpage URL to generate a summary.", icon="🌐")

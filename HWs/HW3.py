@@ -33,13 +33,13 @@ if prompt := st.chat_input("What is up?"):
     # Generate response using Cohere API
     client = st.session_state.client
     try:
-        stream = client.chat(
+        stream = client.chat_stream(  # Changed from chat() to chat_stream()
             model='command',
             message=prompt,
             chat_history=chat_history,
             temperature=0,       
-            max_tokens=1500,
-            stream=True
+            max_tokens=1500
+            # Removed stream=True parameter
         )
         
         # Display assistant response
@@ -47,8 +47,9 @@ if prompt := st.chat_input("What is up?"):
             response_placeholder = st.empty()
             full_response = ""
             for event in stream:
-                full_response += event.text
-                response_placeholder.markdown(full_response + "▌")
+                if event.event_type == "text-generation":
+                    full_response += event.text
+                    response_placeholder.markdown(full_response + "▌")
             response_placeholder.markdown(full_response)
         
         # Add assistant response to chat history

@@ -1,133 +1,223 @@
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 from openai import OpenAI
-import tiktoken  # Required for token counting
+import cohere
+import tiktoken
+import google.generativeai as genai
+from google.generativeai.types import content_types
 
-st.title("LAB 3: Chatbot")
+# Function to read webpage content from a URL
+def read_webpage_from_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        document = " ".join([p.get_text() for p in soup.find_all("p")])
+        return document
+    except requests.RequestException as e:
+        st.error(f"Error reading webpage from {url}: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Error processing the webpage: {e}")
+        return None
 
-# Sidebar options for model and buffer selection
-openAI_model = st.sidebar.selectbox("Which model?", ("mini", "regular"))
-buffer_type = st.sidebar.selectbox("Select buffer type", ("Message-based", "Token-based"))
+# Function to verify OpenAI API key
+def verify_openai_key(api_key):
+    try:
+        client = OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
-# Determine which model to use
-if openAI_model == "mini":
-    model_to_use = "gpt-4o-mini"
-else:
-    model_to_use = "gpt-4o"
+# Function to verify Cohere API key
+def verify_cohere_key(api_key):
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
-# Initialize the OpenAI client
-if 'client' not in st.session_state:
-    api_key = st.secrets['key1']
-    st.session_state.client = OpenAI(api_key=api_key)
+# Function to verify Gemini API key
+def verify_gemini_key(api_key):
+    try:
+        # Configure the API key
+        genai.configure(api_key=api_key)
+        client = genai.GenerativeModel('gemini-pro')
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
-# Initialize the message history and conversation state
-if 'messages' not in st.session_state:
-    st.session_state['messages'] = [{"role": "assistant", "content": "Hi there! What cool thing do you want to learn about today?"}]
-    st.session_state['wants_more_info'] = False
-    st.session_state['last_question'] = ""
+# Function to generate summary using OpenAI
+def generate_openai_response(client, messages, model):
+    try:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
 
-# Tokenizer setup for token counting
-encoding = tiktoken.encoding_for_model(model_to_use)
+# Function to generate summary using Cohere
+def generate_cohere_response(client, messages):
+    try:
+        events = client.chat_stream(
+            model='command-r',
+            message=messages[-1]['content'],
+            chat_history=[{'role': m['role'], 'message': m['content']} for m in messages[:-1]],
+            temperature=0,       
+            max_tokens=1500,
+            prompt_truncation='AUTO',
+            connectors=[],
+            documents=[]
+        )
+        return events
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
 
-def calculate_tokens(messages):
-    """Calculate total tokens for a list of messages."""
+# Function to generate summary using Gemini
+def generate_gemini_response(client, messages):
+    try:
+        gemini_messages = []
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_messages.append(content_types.Content(role=role, parts=[content_types.Part.from_text(msg["content"])]))
+        
+        # Generate the response stream
+        stream = client.generate_content(gemini_messages, stream=True)
+        
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
+
+# Function to calculate tokens
+def calculate_tokens(messages, encoding):
     total_tokens = 0
     for msg in messages:
         total_tokens += len(encoding.encode(msg['content']))
     return total_tokens
 
-def truncate_messages_by_tokens(messages, max_tokens):
-    """Truncate the message buffer to ensure it stays within max_tokens."""
-    total_tokens = calculate_tokens(messages)
+# Function to truncate messages by tokens
+def truncate_messages_by_tokens(messages, max_tokens, encoding):
+    total_tokens = calculate_tokens(messages, encoding)
     while total_tokens > max_tokens and len(messages) > 1:
         messages.pop(0)
-        total_tokens = calculate_tokens(messages)
+        total_tokens = calculate_tokens(messages, encoding)
     return messages
 
-# Maximum tokens allowed to send to the model
-max_tokens = 4096
+# Streamlit app
+st.title("Enhanced Multi-LLM Chatbot with URL Processing")
 
-# Display previous messages
-for msg in st.session_state.messages:
-    chat_msg = st.chat_message(msg["role"])
-    chat_msg.write(msg["content"])
+# Sidebar: URL inputs
+st.sidebar.header("URL Inputs")
+url1 = st.sidebar.text_input("Enter the first URL:")
+url2 = st.sidebar.text_input("Enter the second URL (optional):")
 
-# Chat input
-if prompt := st.chat_input("Ask me anything!"):
-    # Append user's input
+# Sidebar: LLM provider selection
+st.sidebar.header("LLM Provider")
+llm_provider = st.sidebar.selectbox(
+    "Choose your LLM provider:",
+    options=["OpenAI GPT-3.5", "OpenAI GPT-4", "Cohere", "Gemini"]
+)
+
+# Sidebar: Conversation memory type
+st.sidebar.header("Conversation Memory")
+memory_type = st.sidebar.radio(
+    "Choose conversation memory type:",
+    options=["Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens"]
+)
+
+# API key verification
+if "OpenAI" in llm_provider:
+    openai_api_key = st.secrets['key1']
+    client, is_valid, message = verify_openai_key(openai_api_key)
+    model = "gpt-3.5-turbo" if llm_provider == "OpenAI GPT-3.5" else "gpt-4"
+elif llm_provider == "Cohere":
+    cohere_api_key = st.secrets['cohere_key']
+    client, is_valid, message = verify_cohere_key(cohere_api_key)
+else:  # Gemini
+    gemini_api_key = st.secrets['gemini_key']
+    client, is_valid, message = verify_gemini_key(gemini_api_key)
+
+if is_valid:
+    st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
+else:
+    st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
+    st.stop()
+
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = []
+
+# Process URLs
+documents = []
+if url1:
+    doc1 = read_webpage_from_url(url1)
+    if doc1:
+        documents.append(doc1)
+if url2:
+    doc2 = read_webpage_from_url(url2)
+    if doc2:
+        documents.append(doc2)
+
+# Combine documents
+combined_document = "\n\n".join(documents)
+
+# Chat interface
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("What would you like to know?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # If the bot is waiting for a 'yes' or 'no' to provide more info
-    if st.session_state['wants_more_info']:
-        if prompt.lower() == "yes":
-            # Provide more info about the last question
-            client = st.session_state.client
-            more_info_prompt = f"Provide more fun details about this topic for a 10-year-old: {st.session_state['last_question']}"
-            more_info_messages = [{"role": "system", "content": "You are a fun, friendly chatbot for 10-year-old kids. Use simple words, short sentences, and make your explanations exciting and easy to understand. Keep your answers brief and engaging."},
-                                  {"role": "user", "content": more_info_prompt}]
-            
-            stream = client.chat.completions.create(
-                model=model_to_use,
-                messages=more_info_messages,
-                stream=True
-            )
+    # Prepare messages for LLM
+    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    messages_for_llm = [context_message] + st.session_state.messages
 
-            with st.chat_message("assistant"):
-                more_info_response = st.write_stream(stream)
+    # Apply conversation memory type
+    if memory_type == "Buffer of 5 questions":
+        messages_for_llm = messages_for_llm[-11:]  # System message + last 5 Q&A pairs
+    elif memory_type == "Conversation summary":
+        # For simplicity, we'll just use the last message as a summary
+        # In a real implementation, you'd want to generate an actual summary
+        messages_for_llm = [context_message, messages_for_llm[-1]]
+    else:  # Buffer of 5,000 tokens
+        encoding = tiktoken.encoding_for_model(model if "OpenAI" in llm_provider else "gpt-3.5-turbo")
+        messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
 
-            st.session_state.messages.append({"role": "assistant", "content": more_info_response})
-            
-            # Always ask if they want more info
-            follow_up_question = "DO YOU WANT MORE INFO?"
-            st.session_state.messages.append({"role": "assistant", "content": follow_up_question})
-            with st.chat_message("assistant"):
-                st.markdown(follow_up_question)
-            st.session_state['wants_more_info'] = True
-        elif prompt.lower() == "no":
-            new_question_prompt = "What other question can I help you with?"
-            st.session_state.messages.append({"role": "assistant", "content": new_question_prompt})
-            with st.chat_message("assistant"):
-                st.markdown(new_question_prompt)
-            st.session_state['wants_more_info'] = False
-            st.session_state['last_question'] = ""
-        else:
-            st.warning("Oops! Please say 'yes' or 'no'.")
-    else:
-        # Regular question handling
-        if buffer_type == "Message-based":
-            truncated_messages = st.session_state.messages[-2:]
-        elif buffer_type == "Token-based":
-            truncated_messages = truncate_messages_by_tokens(st.session_state.messages, max_tokens)
+    # Generate response based on selected LLM provider
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        if "OpenAI" in llm_provider:
+            stream = generate_openai_response(client, messages_for_llm, model)
+            if stream:
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+        elif llm_provider == "Cohere":
+            events = generate_cohere_response(client, messages_for_llm)
+            if events:
+                for event in events:
+                    if event.event_type == "text-generation":
+                        full_response += event.text
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+        else:  # Gemini
+            full_response = generate_gemini_response(client, messages_for_llm)
+            if full_response:
+                message_placeholder.markdown(full_response)
 
-        # Add instruction for kid-friendly responses
-        kid_friendly_instruction = {"role": "system", "content": "You are a fun, friendly chatbot for 10-year-old kids. Use simple words, short sentences, and make your explanations exciting and easy to understand. Keep your answers brief and engaging."}
-        truncated_messages = [kid_friendly_instruction] + truncated_messages
-
-        client = st.session_state.client
-        stream = client.chat.completions.create(
-            model=model_to_use,
-            messages=truncated_messages,
-            stream=True
-        )
-
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        
-        # Store the last question for potential follow-up
-        st.session_state['last_question'] = prompt
-
-        # Always ask if they want more information
-        st.session_state['wants_more_info'] = True
-        follow_up_question = "DO YOU WANT MORE INFO?"
-        st.session_state.messages.append({"role": "assistant", "content": follow_up_question})
-        with st.chat_message("assistant"):
-            st.markdown(follow_up_question)
-
-    # Apply the chosen buffer strategy
-    if buffer_type == "Message-based":
-        st.session_state.messages = st.session_state.messages[-5:]
-    elif buffer_type == "Token-based":
-        st.session_state.messages = truncate_messages_by_tokens(st.session_state.messages, max_tokens)
+    st.session_state.messages.append({"role": "assistant", "content": full_response})

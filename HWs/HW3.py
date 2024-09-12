@@ -85,8 +85,7 @@ def generate_cohere_response(client, messages):
             message=last_user_message,
             chat_history=chat_history,
             temperature=0,
-            max_tokens=1500,
-            stream=True
+            max_tokens=1500
         )
         
         return stream

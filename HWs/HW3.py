@@ -42,6 +42,7 @@ def verify_cohere_key(api_key):
 # Function to verify Gemini API key
 def verify_gemini_key(api_key):
     try:
+        # Configure the API key
         genai.configure(api_key=api_key)
         client = genai.GenerativeModel('gemini-pro')
         return client, True, "API key is valid"
@@ -64,12 +65,14 @@ def generate_openai_response(client, messages, model):
 # Function to generate summary using Cohere
 def generate_cohere_response(client, messages):
     try:
+        # Generate the response stream
         stream = client.chat_stream(
-            model='command',
-            message=messages[-1]['content'],
-            chat_history=[{"role": msg["role"], "message": msg["content"]} for msg in messages[:-1]],
+            model='command-r',
+            message=messages,
             temperature=0,
-            max_tokens=1500
+            max_tokens=1500,
+            connectors=[],
+            documents=[]
         )
         return stream
     except Exception as e:
@@ -80,7 +83,7 @@ def generate_cohere_response(client, messages):
 def generate_gemini_response(client, messages):
     try:
         stream = client.generate_content(messages, stream=True)
-        return stream
+        return stream.text
     except Exception as e:
         st.error(f"Error generating response: {e}", icon="❌")
         return None
@@ -176,9 +179,11 @@ if prompt := st.chat_input("What would you like to know?"):
     if memory_type == "Buffer of 5 questions":
         messages_for_llm = messages_for_llm[-11:]  # System message + last 5 Q&A pairs
     elif memory_type == "Conversation summary":
+        # For simplicity, we'll just use the last message as a summary
+        # In a real implementation, you'd want to generate an actual summary
         messages_for_llm = [context_message, messages_for_llm[-1]]
     else:  # Buffer of 5,000 tokens
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        encoding = tiktoken.encoding_for_model(model if "OpenAI" in llm_provider else "gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
 
     # Generate response based on selected LLM provider
@@ -194,20 +199,16 @@ if prompt := st.chat_input("What would you like to know?"):
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         elif llm_provider == "Cohere":
-            stream = generate_cohere_response(client, messages_for_llm)
-            if stream:
-                for event in stream:
+            events = generate_cohere_response(client, messages_for_llm)
+            if events:
+                response_text = ""
+                for event in events:
                     if event.event_type == "text-generation":
-                        full_response += event.text
-                        message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
+                        response_text += str(event.text)
+                st.write(response_text)
         else:  # Gemini
-            stream = generate_gemini_response(client, messages_for_llm)
-            if stream:
-                for chunk in stream:
-                    if chunk.text:
-                        full_response += chunk.text
-                        message_placeholder.markdown(full_response + "▌")
+            full_response = generate_gemini_response(client, messages_for_llm)
+            if full_response:
                 message_placeholder.markdown(full_response)
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})

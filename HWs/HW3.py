@@ -5,7 +5,6 @@ from openai import OpenAI
 import cohere
 import tiktoken
 import google.generativeai as genai
-from google.generativeai.types import content_types
 
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
@@ -69,7 +68,7 @@ def generate_cohere_response(client, messages):
         events = client.chat_stream(
             model='command-r',
             message=messages[-1]['content'],
-            chat_history=[{'role': m['role'], 'message': m['content']} for m in messages[:-1]],
+            chat_history=[{'role': m['role'], 'message': m['content']} for m in messages],
             temperature=0,       
             max_tokens=1500,
             prompt_truncation='AUTO',
@@ -87,8 +86,9 @@ def generate_gemini_response(client, messages):
         gemini_messages = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
-            gemini_messages.append(content_types.Content(role=role, parts=[content_types.Part.from_text(msg["content"])]))
-        
+           # gemini_messages.append(content_types.Content(role=role, parts=[content_types.Part.from_text(msg["content"])]))
+            gemini_messages.append({'role': role, 'parts': msg['content']})
+
         # Generate the response stream
         stream = client.generate_content(gemini_messages, stream=True)
         

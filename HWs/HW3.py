@@ -223,11 +223,11 @@ if prompt := st.chat_input("What would you like to know?"):
         elif llm_provider == "Cohere":
             stream = generate_cohere_response(client, messages_for_llm)
             st.write(stream)
-            '''if stream:
+            if stream:
                 for event in stream:
                     full_response += str(event.text)
                     message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)'''
+                message_placeholder.markdown(full_response)
         else:  # Gemini
             full_response = generate_gemini_response(client, messages_for_llm)
             if full_response:

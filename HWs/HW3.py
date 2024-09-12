@@ -37,7 +37,7 @@ if prompt := st.chat_input("What is up?"):
                 response_text += str(event.text)
 
     with st.chat_message("assistant"):
-        response = st.write_stream(response_text)
+        response = st.write(response_text)
     
     st.session_state.messages.append({"role":"assistant", "content":response})
 

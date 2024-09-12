@@ -221,12 +221,13 @@ if prompt := st.chat_input("What would you like to know?"):
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         elif llm_provider == "Cohere":
-            stream = generate_cohere_response(client, messages_for_llm)
-            if stream:
-                for event in stream:
-                    full_response += str(event.text)
-                    message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
+            events = generate_cohere_response(client, messages_for_llm)
+            if events:
+                response_text = ""
+                for event in events:
+                    if event.event_type == "text-generation":
+                        response_text += str(event.text)
+                st.write(response_text)
         else:  # Gemini
             full_response = generate_gemini_response(client, messages_for_llm)
             if full_response:

@@ -222,7 +222,6 @@ if prompt := st.chat_input("What would you like to know?"):
                 message_placeholder.markdown(full_response)
         elif llm_provider == "Cohere":
             stream = generate_cohere_response(client, messages_for_llm)
-            st.write(stream)
             if stream:
                 for event in stream:
                     full_response += str(event.text)

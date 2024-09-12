@@ -67,8 +67,8 @@ def generate_cohere_response(client, messages):
     try:
         events = client.chat_stream(
             model='command-r',
-            message=messages[-1]['content'],
-            chat_history=[{'role': m['role'], 'message': m['content']} for m in messages],
+            message=messages,  #[-1]['content'],
+            #chat_history=[{'role': m['role'], 'message': m['content']} for m in messages],
             temperature=0,       
             max_tokens=1500,
             prompt_truncation='AUTO',

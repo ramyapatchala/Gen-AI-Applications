@@ -105,7 +105,7 @@ def generate_gemini_response(client, messages):
         # Generate the response stream
         stream = client.generate_content(gemini_messages, stream=True)
         
-        return stream
+        return stream.text
     except Exception as e:
         st.error(f"Error generating response: {e}", icon="❌")
         return None
@@ -224,7 +224,7 @@ if prompt := st.chat_input("What would you like to know?"):
             stream = generate_cohere_response(client, messages_for_llm)
             if stream:
                 for event in stream:
-                    full_response += event.text
+                    full_response += str(event.text)
                     message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         else:  # Gemini

@@ -1,57 +1,61 @@
 import streamlit as st
 import cohere
 
-# Title of the app
-st.title("My lab3 Question Answering Chatbot")
+st.title("My lab3 Question answering chatbot")
 
-# Initialize the Cohere client using the API key
+# Initialize the Cohere client
 if 'client' not in st.session_state:
     api_key = st.secrets['cohere_key']
     st.session_state.client = cohere.Client(api_key)
 
-# Initialize the conversation messages
+# Initialize message history
 if 'messages' not in st.session_state:
-    st.session_state['messages'] = [{"role": "assistant", "content": "How can I help you?"}]
+    st.session_state.messages = [{"role": "CHATBOT", "content": "How can I help you?"}]
 
-# Display the conversation history
+# Display chat history
 for msg in st.session_state.messages:
-    chat_msg = st.chat_message(msg["role"])
+    chat_msg = st.chat_message("assistant" if msg["role"] == "CHATBOT" else "user")
     chat_msg.write(msg["content"])
 
-# Capture user input from chat input box
+# Chat input
 if prompt := st.chat_input("What is up?"):
-    # Add the user's message to the conversation
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "USER", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    # Fetch the client instance
+    
+    # Prepare chat history for Cohere API
+    chat_history = [
+        {"role": msg["role"], "message": msg["content"]}
+        for msg in st.session_state.messages[:-1]  # Exclude the last message
+    ]
+    
+    # Generate response using Cohere API
     client = st.session_state.client
-
-    # Send the chat request to Cohere's chat API (or streaming chat API)
-    stream = client.chat_stream(
-        model='command-r',
-        message=[{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages],  # Flatten the messages into the right format
-        temperature=0,       
-        max_tokens=1500,
-        prompt_truncation='AUTO',
-        connectors=[],
-        documents=[]
-    )
-
-    # Collect the streaming response
-    response_text = ""
-    if stream:
-        for event in stream:
-            if event.event_type == "text-generation":
-                response_text += event.text  # Collect text from the stream
-
-    # Display the assistant's response
-    with st.chat_message("assistant"):
-        st.write(response_text)
-
-    # Add the assistant's message to the conversation history
-    st.session_state.messages.append({"role": "assistant", "content": response_text})
-
-    # Limit the conversation history to the last 5 messages to keep it manageable
-    st.session_state.messages = st.session_state.messages[-5:]
+    try:
+        stream = client.chat(
+            model='command',
+            message=prompt,
+            chat_history=chat_history,
+            temperature=0,       
+            max_tokens=1500,
+            stream=True
+        )
+        
+        # Display assistant response
+        with st.chat_message("assistant"):
+            response_placeholder = st.empty()
+            full_response = ""
+            for event in stream:
+                full_response += event.text
+                response_placeholder.markdown(full_response + "▌")
+            response_placeholder.markdown(full_response)
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "CHATBOT", "content": full_response})
+        
+        # Limit chat history to last 5 messages
+        st.session_state.messages = st.session_state.messages[-5:]
+    
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")

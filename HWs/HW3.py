@@ -41,4 +41,4 @@ if prompt := st.chat_input("What is up?"):
     
     st.session_state.messages.append({"role":"assistant", "content":response})
 
-    st.session_state.messages = st.session_state.messages[-2:]
+    st.session_state.messages = st.session_state.messages[-5:]

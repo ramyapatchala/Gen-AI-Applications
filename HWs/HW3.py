@@ -65,17 +65,31 @@ def generate_openai_response(client, messages, model):
 # Function to generate summary using Cohere
 def generate_cohere_response(client, messages):
     try:
-        events = client.chat_stream(
-            model='command-r',
-            message=messages,  #[-1]['content'],
-            #chat_history=[{'role': m['role'], 'message': m['content']} for m in messages],
-            temperature=0,       
+        # Extract the last user message
+        last_user_message = next((msg['content'] for msg in reversed(messages) if msg['role'] == 'user'), None)
+        
+        # Prepare chat history
+        chat_history = [
+            {'role': 'USER' if msg['role'] == 'user' else 'CHATBOT', 'message': msg['content']}
+            for msg in messages[:-1]  # Exclude the last message as it will be the 'message' parameter
+        ]
+        
+        # If there's no user message, return None
+        if not last_user_message:
+            st.error("No user message found.")
+            return None
+
+        # Generate the response stream
+        stream = client.chat(
+            model='command',
+            message=last_user_message,
+            chat_history=chat_history,
+            temperature=0,
             max_tokens=1500,
-            prompt_truncation='AUTO',
-            connectors=[],
-            documents=[]
+            stream=True
         )
-        return events
+        
+        return stream
     except Exception as e:
         st.error(f"Error generating response: {e}", icon="❌")
         return None
@@ -208,12 +222,11 @@ if prompt := st.chat_input("What would you like to know?"):
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         elif llm_provider == "Cohere":
-            events = generate_cohere_response(client, messages_for_llm)
-            if events:
-                for event in events:
-                    if event.event_type == "text-generation":
-                        full_response += event.text
-                        message_placeholder.markdown(full_response + "▌")
+            stream = generate_cohere_response(client, messages_for_llm)
+            if stream:
+                for event in stream:
+                    full_response += event.text
+                    message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         else:  # Gemini
             full_response = generate_gemini_response(client, messages_for_llm)

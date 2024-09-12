@@ -21,14 +21,23 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
     
     client = st.session_state.client
-    stream = client.chat.completions.create(
-        model = model_to_use,
-        messages = st.session_state.messages,
-        stream = True
-    )
+    stream = client.chat_stream(
+            model='command-r',
+            message=prompt,
+            temperature=0,       
+            max_tokens=1500,
+            prompt_truncation='AUTO',
+            connectors=[],
+            documents=[]
+        )
+    if stream:
+        response_text = ""
+        for event in stream:
+            if event.event_type == "text-generation":
+                response_text += str(event.text)
 
     with st.chat_message("assistant"):
-        response = st.write_stream(stream)
+        response = st.write_stream(response_text)
     
     st.session_state.messages.append({"role":"assistant", "content":response})
 

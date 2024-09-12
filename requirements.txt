@@ -7,3 +7,4 @@ anthropic
 cohere
 python-dotenv
 tiktoken
+google-generativeai

@@ -80,8 +80,8 @@ def generate_cohere_response(client, messages):
             return None
 
         # Generate the response stream
-        stream = client.chat(
-            model='command',
+        stream = client.chat_stream(
+            model='command-r',
             message=last_user_message,
             chat_history=chat_history,
             temperature=0,

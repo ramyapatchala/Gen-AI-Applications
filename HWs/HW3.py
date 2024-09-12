@@ -65,29 +65,15 @@ def generate_openai_response(client, messages, model):
 # Function to generate summary using Cohere
 def generate_cohere_response(client, messages):
     try:
-        # Extract the last user message
-        last_user_message = next((msg['content'] for msg in reversed(messages) if msg['role'] == 'user'), None)
-        
-        # Prepare chat history
-        chat_history = [
-            {'role': 'USER' if msg['role'] == 'user' else 'CHATBOT', 'message': msg['content']}
-            for msg in messages[:-1]  # Exclude the last message as it will be the 'message' parameter
-        ]
-        
-        # If there's no user message, return None
-        if not last_user_message:
-            st.error("No user message found.")
-            return None
-
         # Generate the response stream
         stream = client.chat_stream(
             model='command-r',
-            message=last_user_message,
-            chat_history=chat_history,
+            message=messages,
             temperature=0,
-            max_tokens=1500
+            max_tokens=1500,
+            connectors=[],
+            documents=[]
         )
-        
         return stream
     except Exception as e:
         st.error(f"Error generating response: {e}", icon="❌")
@@ -96,15 +82,7 @@ def generate_cohere_response(client, messages):
 # Function to generate summary using Gemini
 def generate_gemini_response(client, messages):
     try:
-        gemini_messages = []
-        for msg in messages:
-            role = "user" if msg["role"] == "user" else "model"
-           # gemini_messages.append(content_types.Content(role=role, parts=[content_types.Part.from_text(msg["content"])]))
-            gemini_messages.append({'role': role, 'parts': msg['content']})
-
-        # Generate the response stream
-        stream = client.generate_content(gemini_messages, stream=True)
-        
+        stream = client.generate_content(messages, stream=True)
         return stream.text
     except Exception as e:
         st.error(f"Error generating response: {e}", icon="❌")

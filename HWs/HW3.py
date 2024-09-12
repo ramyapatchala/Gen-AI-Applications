@@ -1,5 +1,6 @@
 import streamlit as st
 from openai import OpenAI
+import cohere
 
 st.title("My lab3 Question answering chatbot")
 

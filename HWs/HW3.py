@@ -109,6 +109,35 @@ def generate_gemini_response(client, messages, prompt):
     except Exception as e:
         return None
 
+def generate_conversation_summary(client, messages, llm_provider):
+    summary_prompt = "Summarize the key points of this conversation concisely:"
+    if llm_provider == 'Gemini':
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            summary_prompt.append({"role": role, "parts": msg["content"]})
+        response = client.generate_content(summary_prompt)
+        return response.text
+    elif "OpenAI" in llm_provider:
+        for msg in messages:
+        summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        response = client.chat.completions.create(
+            model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=150
+        )
+        return response.choices[0].message.content
+    else:
+        for msg in messages:
+        summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        response = client.generate(
+            prompt=summary_prompt,
+            max_tokens=150,
+            temperature=0.7,
+        )
+        return response.generations[0].text
+
+
+
 st.title("My lab3 Question answering chatbot")
 
 # Sidebar: URL inputs
@@ -177,20 +206,22 @@ if prompt := st.chat_input("What would you like to know?"):
     # Add user message to chat history
     with st.chat_message("user"):
         st.markdown(prompt)
-    #if llm_provider == "Gemini":
-     #   st.session_state.messages.append({"role": "user", "parts": [{"text": prompt}]})
-      #  context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
-    #else:
+
     st.session_state.messages.append({"role": "user", "content": prompt})
     context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
     
     messages_for_llm = [context_message] + st.session_state.messages
-
+    
     # Apply conversation memory type
     if memory_type == "Buffer of 5 questions":
         messages_for_llm = messages_for_llm[-5:]  # System message + last 5 Q&A pairs
     elif memory_type == "Conversation summary":
-        messages_for_llm = [context_message, messages_for_llm[-1]]
+        if 'conversation_summary' not in st.session_state:
+            st.session_state.conversation_summary = ""
+        st.session_state.conversation_summary = generate_conversation_summary(client, st.session_state.messages, llm_provider)
+        messages_for_llm = [    context_message,
+        {"role": "system", "content": f"Conversation summary: {st.session_state.conversation_summary}"},
+        st.session_state.messages[-1]]  # Include only the latest user message
     else:
         encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)

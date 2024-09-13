@@ -165,7 +165,7 @@ combined_document = "\n\n".join(documents)
 for message in st.session_state.messages:
     role = "user" if message["role"] == "user" else "system"
     with st.chat_message(role):
-        content = message.get("content") or  message["parts"][0]["text"]
+        content = message.get("content") or  message.get("parts", [{}])[0].get("text", "")
         st.markdown(content)
 
 # Chat input

@@ -135,7 +135,7 @@ if prompt := st.chat_input("What would you like to know?"):
         for msg in st.session_state.messages[:-1]  # Exclude the last message
     ]
 
-    with st.chat_message("assistant"):
+    with st.chat_message("system"):
         message_placeholder = st.empty()
         full_response = ""
         if "Cohere" in llm_provider:
@@ -146,4 +146,4 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += event.text
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "system", "content": full_response})

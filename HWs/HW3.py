@@ -2,7 +2,7 @@ import streamlit as st
 import cohere
 import requests
 from bs4 import BeautifulSoup
-
+import tiktoken
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
     try:
@@ -42,11 +42,12 @@ def verify_cohere_key(api_key):
         return None, False, str(e)
 
 # Function to generate response using Cohere
-def generate_cohere_response(client, prompt):
+def generate_cohere_response(client, messages):
     try:
         stream = client.chat_stream(
-            model='command',
-            message=prompt,
+            model='command-r',
+            message=messages[-1]['content'],
+            chat_history=[{"role": m['role'], "message": m['content']} for m in messages[:-1]],
             temperature=0,       
             max_tokens=1500
         )

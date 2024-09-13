@@ -97,6 +97,7 @@ def generate_gemini_response(client, messages, prompt):
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
             msgs.append({"role": role, "parts": [{"text": msg["parts"][0]["text"]}]})
+            
 
         response = client.generate_content(
             contents=[*msgs, {"role": "user", "parts": [{"text": prompt}]}],
@@ -218,6 +219,7 @@ if prompt := st.chat_input("What would you like to know?"):
                 message_placeholder.markdown(full_response)
         else:
             response = generate_gemini_response(client, messages_for_llm, prompt)
+            st.write(response)
             if response:
                 for chunk in response:
                     if chunk.text:

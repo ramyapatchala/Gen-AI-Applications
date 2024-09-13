@@ -40,6 +40,7 @@ def verify_cohere_key(api_key):
         return client, True, "API key is valid"
     except Exception as e:
         return None, False, str(e)
+
 # Function to generate response using Cohere
 def generate_cohere_response(client, prompt):
     try:
@@ -88,6 +89,7 @@ else:
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state['messages'] = []
+
 # Process URLs
 documents = []
 if url1:
@@ -103,7 +105,7 @@ if url2:
 combined_document = "\n\n".join(documents)
 
 # Display chat history
-for msg in st.session_state.messages:
+for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
@@ -123,7 +125,7 @@ if prompt := st.chat_input("What would you like to know?"):
     elif memory_type == "Conversation summary":
         messages_for_llm = [context_message, messages_for_llm[-1]]
     else:
-        encoding = tiktoken.encoding_for_model(model if "OpenAI" in llm_provider else "gpt-3.5-turbo")
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
 
     # Prepare chat history for Cohere API
@@ -143,4 +145,4 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += event.text
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
-     st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "assistant", "content": full_response})

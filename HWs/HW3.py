@@ -64,17 +64,7 @@ if prompt := st.chat_input("What is up?"):
     # Generate response using Gemini API
     client = st.session_state.client
     response = generate_gemini_response(client, messages_for_llm, prompt)
-    
-    if response:
-        # Display assistant response
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
+
         
         # Add assistant response to chat history
-        st.session_state.messages.append({"role": "model", "parts": [{"text": full_response}]})
+    st.session_state.messages.append({"role": "model", "parts": [{"text": response}]})

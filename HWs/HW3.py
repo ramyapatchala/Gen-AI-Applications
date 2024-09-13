@@ -45,7 +45,7 @@ def verify_cohere_key(api_key):
 def generate_cohere_response(client, prompt):
     try:
         stream = client.chat_stream(
-            model='command-r',
+            model='command',
             message=prompt,
             temperature=0,       
             max_tokens=1500

@@ -65,9 +65,17 @@ def generate_openai_response(client, messages, model):
 # Function to generate summary using Cohere
 def generate_cohere_response(client, messages):
     try:
+        last_message = messages[-1]['content']
+        
+        # Prepare chat history
+        chat_history = [
+            {"role": msg["role"], "message": msg["content"]}
+            for msg in messages[:-1]
+        ]
         # Generate the response stream
         stream = client.chat_stream(
             model='command-r',
+            chat_history=chat_history,
             message=messages,
             temperature=0,
             max_tokens=1500,

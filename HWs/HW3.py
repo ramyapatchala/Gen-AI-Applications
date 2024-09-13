@@ -25,6 +25,7 @@ def read_webpage_from_url(url):
 def calculate_tokens(messages):
     """Calculate total tokens for a list of messages."""
     total_tokens = 0
+    encoding = tiktoken.encoding_for_model('gpt-4o-mini')
     for msg in messages:
         total_tokens += len(encoding.encode(msg['content']))
     return total_tokens

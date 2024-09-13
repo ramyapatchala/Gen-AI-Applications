@@ -34,15 +34,6 @@ def truncate_messages_by_tokens(messages, max_tokens, encoding):
         total_tokens = calculate_tokens(messages, encoding)
     return messages
 
-# Function to generate response using Cohere
-import streamlit as st
-import google.generativeai as genai
-import requests
-from bs4 import BeautifulSoup
-import tiktoken
-
-# Function definitions (read_webpage_from_url, calculate_tokens, truncate_messages_by_tokens) remain unchanged
-
 def generate_gemini_response(client, messages, prompt):
     try:
         response = client.generate_content(
@@ -59,7 +50,25 @@ def generate_gemini_response(client, messages, prompt):
 
 st.title("My lab3 Question answering chatbot")
 
-# Sidebar components remain unchanged
+# Sidebar: URL inputs
+st.sidebar.header("URL Inputs")
+url1 = st.sidebar.text_input("Enter the first URL:")
+url2 = st.sidebar.text_input("Enter the second URL (optional):")
+
+# Sidebar: LLM provider selection
+st.sidebar.header("LLM Provider")
+llm_provider = st.sidebar.selectbox(
+    "Choose your LLM provider:",
+    options=["Gemini"]
+)
+
+# Sidebar: Conversation memory type
+st.sidebar.header("Conversation Memory")
+memory_type = st.sidebar.radio(
+    "Choose conversation memory type:",
+    options=["Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens"]
+)
+
 
 # Initialize the Gemini client
 if 'client' not in st.session_state:
@@ -72,6 +81,18 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 # Process URLs and combine documents (unchanged)
+documents = []
+if url1:
+    doc1 = read_webpage_from_url(url1)
+    if doc1:
+        documents.append(doc1)
+if url2:
+    doc2 = read_webpage_from_url(url2)
+    if doc2:
+        documents.append(doc2)
+
+# Combine documents
+combined_document = "\n\n".join(documents)
 
 # Display chat history
 for msg in st.session_state.messages:

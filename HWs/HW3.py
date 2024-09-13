@@ -93,6 +93,7 @@ def verify_gemini_key(api_key):
 
 def generate_gemini_response(client, messages, prompt):
     try:
+        st.write("second one")
         msgs = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
@@ -218,6 +219,7 @@ if prompt := st.chat_input("What would you like to know?"):
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
         else:
+            st.write("Gemini - here -1")
             response = generate_gemini_response(client, messages_for_llm, prompt)
             st.write(response)
             if response:

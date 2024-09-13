@@ -110,34 +110,33 @@ def generate_gemini_response(client, messages, prompt):
         return None
 
 def generate_conversation_summary(client, messages, llm_provider):
-    summary_prompt = "Summarize the key points of this conversation concisely:"
     if llm_provider == 'Gemini':
+        summary_prompt = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
-            summary_prompt.append({"role": role, "parts": msg["content"]})
+            summary_prompt.append({"role": role, "parts": [{"text": msg["content"]}]})
+        summary_prompt.insert(0, {"role": "user", "parts": [{"text": "Summarize the key points of this conversation concisely:"}]})
         response = client.generate_content(summary_prompt)
         return response.text
-    elif "OpenAI" in llm_provider:
-        for msg in messages:
-        summary_prompt += f"\n{msg['role']}: {msg['content']}"
-        response = client.chat.completions.create(
-            model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
-            messages=[{"role": "user", "content": summary_prompt}],
-            max_tokens=150
-        )
-        return response.choices[0].message.content
     else:
+        summary_prompt = "Summarize the key points of this conversation concisely:"
         for msg in messages:
-        summary_prompt += f"\n{msg['role']}: {msg['content']}"
-        response = client.generate(
-            prompt=summary_prompt,
-            max_tokens=150,
-            temperature=0.7,
-        )
-        return response.generations[0].text
-
-
-
+            summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        
+        if "OpenAI" in llm_provider:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o",
+                messages=[{"role": "user", "content": summary_prompt}],
+                max_tokens=150
+            )
+            return response.choices[0].message.content
+        else:  # Cohere
+            response = client.generate(
+                prompt=summary_prompt,
+                max_tokens=150,
+                temperature=0.7,
+            )
+            return response.generations[0].text
 st.title("My lab3 Question answering chatbot")
 
 # Sidebar: URL inputs

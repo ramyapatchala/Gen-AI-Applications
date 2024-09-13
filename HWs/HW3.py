@@ -97,8 +97,8 @@ def generate_gemini_response(client, messages, prompt):
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
             msgs.append({"role": role, "parts": [{"text": msg["parts"][0]["text"]}]})
-            
-
+        st.write(messages)
+        st.write(msgs)
         response = client.generate_content(
             contents=[*msgs, {"role": "user", "parts": [{"text": prompt}]}],
             generation_config=genai.types.GenerationConfig(

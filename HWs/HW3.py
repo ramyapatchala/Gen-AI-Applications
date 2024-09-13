@@ -1,59 +1,57 @@
 import streamlit as st
-import cohere
+import google.generativeai as genai
 
 st.title("My lab3 Question answering chatbot")
 
-# Initialize the Cohere client
+# Initialize the Gemini client
 if 'client' not in st.session_state:
-    api_key = st.secrets['cohere_key']
-    st.session_state.client = cohere.Client(api_key)
+    api_key = st.secrets['gemini_key']
+    genai.configure(api_key=api_key)
+    st.session_state.client = genai.GenerativeModel('gemini-pro')
 
 # Initialize message history
 if 'messages' not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": "How can I help you?"}]
+    st.session_state.messages = [{"role": "system", "parts": "How can I help you?"}]
 
 # Display chat history
 for msg in st.session_state.messages:
-    chat_msg = st.chat_message("system" if msg["role"] == "system" else "user")
-    chat_msg.write(msg["content"])
+    chat_msg = st.chat_message("assistant" if msg["role"] == "model" else "user")
+    chat_msg.write(msg["parts"][0]["text"])
 
 # Chat input
 if prompt := st.chat_input("What is up?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "parts": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # Prepare chat history for Cohere API
-    chat_history = [
-        {"role": msg["role"], "message": msg["content"]}
-        for msg in st.session_state.messages[:-1]  # Exclude the last message
-    ]
+    # Prepare chat history for Gemini API
+    chat_history = st.session_state.messages[:-1]  # Exclude the last message
     
-    # Generate response using Cohere API
+    # Generate response using Gemini API
     client = st.session_state.client
     try:
-        stream = client.chat_stream(  # Changed from chat() to chat_stream()
-            model='command',
-            message=prompt,
-            chat_history=chat_history,
-            temperature=0,       
-            max_tokens=1500
-            # Removed stream=True parameter
+        response = client.generate_content(
+            contents=[*chat_history, {"role": "user", "parts": prompt}],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=1500,
+            ),
+            stream=True
         )
         
-        # Display system response
-        with st.chat_message("system"):
+        # Display assistant response
+        with st.chat_message("assistant"):
             response_placeholder = st.empty()
             full_response = ""
-            for event in stream:
-                if event.event_type == "text-generation":
-                    full_response += event.text
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
                     response_placeholder.markdown(full_response + "▌")
             response_placeholder.markdown(full_response)
         
-        # Add system response to chat history
-        st.session_state.messages.append({"role": "system", "content": full_response})
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "system", "parts": full_response})
         
         # Limit chat history to last 5 messages
         st.session_state.messages = st.session_state.messages[-5:]

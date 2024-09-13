@@ -219,8 +219,8 @@ if prompt := st.chat_input("What would you like to know?"):
     elif memory_type == "Conversation summary":
         if 'conversation_summary' not in st.session_state:
             st.session_state.conversation_summary = ""
-        st.session_state.conversation_summary = generate_conversation_summary(client, st.session_state.messages, llm_provider)
-        messages_for_llm = [    context_message,
+        st.session_state.conversation_summary = generate_conversation_summary(client, messages_for_llm , llm_provider)
+        messages_for_llm = [ context_message,
         {"role": "system", "content": f"Conversation summary: {st.session_state.conversation_summary}"},
         st.session_state.messages[-1]]  # Include only the latest user message
     else:

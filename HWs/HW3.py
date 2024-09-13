@@ -1,8 +1,9 @@
 import streamlit as st
-import google.generativeai as genai
+import cohere
 import requests
 from bs4 import BeautifulSoup
 import tiktoken
+from openai import OpenAI
 
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
@@ -34,18 +35,49 @@ def truncate_messages_by_tokens(messages, max_tokens, encoding):
         total_tokens = calculate_tokens(messages, encoding)
     return messages
 
-def generate_gemini_response(client, messages, prompt):
+# Function to verify OpenAI API key
+def verify_openai_key(api_key):
     try:
-        response = client.generate_content(
-            contents=[*messages, {"role": "user", "parts": [{"text": prompt}]}],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0,
-                max_output_tokens=1500,
-            ),
-            stream=True
-        )
-        return response
+        client = OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
     except Exception as e:
+        return None, False, str(e)
+
+# Function to generate summary using OpenAI
+def generate_openai_response(client, messages, model):
+    try:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
+
+def verify_cohere_key(api_key):
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
+# Function to generate response using Cohere
+def generate_cohere_response(client, messages):
+    try:
+        stream = client.chat_stream(
+            model='command-r',
+            message=messages[-1]['content'],
+            chat_history=[{"role": m['role'], "message": m['content']} for m in messages[:-1]],
+            temperature=0,       
+            max_tokens=1500
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
         return None
 
 st.title("My lab3 Question answering chatbot")
@@ -59,7 +91,7 @@ url2 = st.sidebar.text_input("Enter the second URL (optional):")
 st.sidebar.header("LLM Provider")
 llm_provider = st.sidebar.selectbox(
     "Choose your LLM provider:",
-    options=["Gemini"]
+    options=["OpenAI GPT-4O-Mini", "OpenAI GPT-4O", "Cohere"]
 )
 
 # Sidebar: Conversation memory type
@@ -68,19 +100,26 @@ memory_type = st.sidebar.radio(
     "Choose conversation memory type:",
     options=["Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens"]
 )
+# API key verification
+if "OpenAI" in llm_provider:
+    openai_api_key = st.secrets['key1']
+    client, is_valid, message = verify_openai_key(openai_api_key)
+    model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
+elif "Cohere" in llm_provider:
+    cohere_api_key = st.secrets['cohere_key']
+    client, is_valid, message = verify_cohere_key(cohere_api_key)
 
+if is_valid:
+    st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
+else:
+    st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
+    st.stop()
 
-# Initialize the Gemini client
-if 'client' not in st.session_state:
-    api_key = st.secrets['gemini_key']
-    genai.configure(api_key=api_key)
-    st.session_state.client = genai.GenerativeModel('gemini-pro')
-
-# Initialize message history
+# Initialize session state
 if 'messages' not in st.session_state:
-    st.session_state.messages = []
+    st.session_state['messages'] = []
 
-# Process URLs and combine documents (unchanged)
+# Process URLs
 documents = []
 if url1:
     doc1 = read_webpage_from_url(url1)
@@ -95,18 +134,18 @@ if url2:
 combined_document = "\n\n".join(documents)
 
 # Display chat history
-for msg in st.session_state.messages:
-    chat_msg = st.chat_message("assistant" if msg["role"] == "model" else "user")
-    chat_msg.write(msg["parts"][0]["text"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 # Chat input
-if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("What would you like to know?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "parts": [{"text": prompt}]})
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
+    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
     messages_for_llm = [context_message] + st.session_state.messages
 
     # Apply conversation memory type
@@ -117,23 +156,30 @@ if prompt := st.chat_input("What is up?"):
     else:
         encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
-    
-    # Generate response using Gemini API
-    client = st.session_state.client
-    response = generate_gemini_response(client, messages_for_llm, prompt)
-    
-    if response:
-        # Display assistant response
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "model", "parts": [{"text": full_response}]})
-    else:
-        st.error("Error generating response")        
+
+    # Prepare chat history for Cohere API
+    chat_history = [
+        {"role": msg["role"], "message": msg["content"]}
+        for msg in st.session_state.messages[:-1]  # Exclude the last message
+    ]
+
+    with st.chat_message("system"):
+        message_placeholder = st.empty()
+        full_response = ""
+        if "OpenAI" in llm_provider:
+            stream = generate_openai_response(client, messages_for_llm, model)
+            if stream:
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+        elif "Cohere" in llm_provider:
+            stream = generate_cohere_response(client, messages_for_llm)
+            if stream:
+                for event in stream:
+                    if event.event_type == "text-generation":
+                        full_response += event.text
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+    st.session_state.messages.append({"role": "system", "content": full_response})

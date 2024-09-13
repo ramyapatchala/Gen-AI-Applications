@@ -30,6 +30,25 @@ def verify_openai_key(api_key):
     except Exception as e:
         return None, False, str(e)
 
+# Function to verify Cohere API key
+def verify_cohere_key(api_key):
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
+# Function to verify Gemini API key
+def verify_gemini_key(api_key):
+    try:
+        # Configure the API key
+        genai.configure(api_key=api_key)
+        client = genai.GenerativeModel('gemini-pro')
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
 # Function to generate summary using OpenAI
 def generate_openai_response(client, messages, model):
     try:
@@ -43,6 +62,31 @@ def generate_openai_response(client, messages, model):
         st.error(f"Error generating response: {e}", icon="❌")
         return None
 
+# Function to generate summary using Cohere
+def generate_cohere_response(client, messages):
+    try:
+        # Generate the response stream
+        stream = client.chat_stream(
+            model='command-r',
+            message=messages,
+            temperature=0,
+            max_tokens=1500,
+            connectors=[],
+            documents=[]
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
+
+# Function to generate summary using Gemini
+def generate_gemini_response(client, messages):
+    try:
+        stream = client.generate_content(messages, stream=True)
+        return stream.text
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
 
 # Function to calculate tokens
 def calculate_tokens(messages, encoding):
@@ -71,7 +115,7 @@ url2 = st.sidebar.text_input("Enter the second URL (optional):")
 st.sidebar.header("LLM Provider")
 llm_provider = st.sidebar.selectbox(
     "Choose your LLM provider:",
-    options=["OpenAI GPT-4O-Mini", "OpenAI GPT-4O"]
+    options=["OpenAI GPT-4O-Mini", "OpenAI GPT-4O", "Cohere", "Gemini"]
 )
 
 # Sidebar: Conversation memory type
@@ -86,6 +130,12 @@ if "OpenAI" in llm_provider:
     openai_api_key = st.secrets['key1']
     client, is_valid, message = verify_openai_key(openai_api_key)
     model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
+elif llm_provider == "Cohere":
+    cohere_api_key = st.secrets['cohere_key']
+    client, is_valid, message = verify_cohere_key(cohere_api_key)
+else:  # Gemini
+    gemini_api_key = st.secrets['gemini_key']
+    client, is_valid, message = verify_gemini_key(gemini_api_key)
 
 if is_valid:
     st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
@@ -137,7 +187,7 @@ if prompt := st.chat_input("What would you like to know?"):
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
 
     # Generate response based on selected LLM provider
-    with st.chat_message("assistant"):
+    with st.chat_message("system"):
         message_placeholder = st.empty()
         full_response = ""
         if "OpenAI" in llm_provider:
@@ -148,5 +198,17 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += chunk.choices[0].delta.content
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
+        elif llm_provider == "Cohere":
+            events = generate_cohere_response(client, messages_for_llm)
+            if events:
+                response_text = ""
+                for event in events:
+                    if event.event_type == "text-generation":
+                        response_text += str(event.text)
+                st.write(response_text)
+        else:  # Gemini
+            full_response = generate_gemini_response(client, messages_for_llm)
+            if full_response:
+                message_placeholder.markdown(full_response)
 
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "system", "content": full_response})

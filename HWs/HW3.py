@@ -178,12 +178,12 @@ if prompt := st.chat_input("What would you like to know?"):
     # Add user message to chat history
     with st.chat_message("user"):
         st.markdown(prompt)
-    if llm_provider == "Gemini":
-        st.session_state.messages.append({"role": "user", "parts": [{"text": prompt}]})
-        context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
-    else:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    #if llm_provider == "Gemini":
+     #   st.session_state.messages.append({"role": "user", "parts": [{"text": prompt}]})
+      #  context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
+    #else:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
     
     messages_for_llm = [context_message] + st.session_state.messages
 

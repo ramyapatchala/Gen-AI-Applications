@@ -171,13 +171,15 @@ for message in st.session_state.messages:
 # Chat input
 if prompt := st.chat_input("What would you like to know?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     if llm_provider == "Gemini":
+        st.session_state.messages.append({"role": "user", "parts": [{"text": prompt}]})
         context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
     else:
+        st.session_state.messages.append({"role": "user", "content": prompt})
         context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    
     messages_for_llm = [context_message] + st.session_state.messages
 
     # Apply conversation memory type
@@ -217,10 +219,9 @@ if prompt := st.chat_input("What would you like to know?"):
         else:
             response = generate_gemini_response(client, messages_for_llm, prompt)
             if response:
-                with st.chat_message("system"):
-                    for chunk in response:
-                        if chunk.text:
-                            full_response += chunk.text
-                            message_placeholder.markdown(full_response + "▌")
-                    message_placeholder.markdown(full_response)
+                for chunk in response:
+                    if chunk.text:
+                        full_response += chunk.text
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
     st.session_state.messages.append({"role": "system", "content": full_response})

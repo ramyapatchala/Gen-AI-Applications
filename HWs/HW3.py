@@ -16,7 +16,7 @@ if 'messages' not in st.session_state:
 # Display chat history
 for msg in st.session_state.messages:
     chat_msg = st.chat_message("assistant" if msg["role"] == "model" else "user")
-    chat_msg.write(msg["parts"][0]["text"])
+    chat_msg.write(msg["parts"])
 
 # Chat input
 if prompt := st.chat_input("What is up?"):

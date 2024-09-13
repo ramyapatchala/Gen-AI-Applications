@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import tiktoken
 from openai import OpenAI
+import google.generativeai as genai
 
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
@@ -80,6 +81,30 @@ def generate_cohere_response(client, messages):
         st.error(f"Error generating response: {e}", icon="❌")
         return None
 
+# Function to verify Gemini API key
+def verify_gemini_key(api_key):
+    try:
+        # Configure the API key
+        genai.configure(api_key=api_key)
+        client = genai.GenerativeModel('gemini-pro')
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
+def generate_gemini_response(client, messages, prompt):
+    try:
+        response = client.generate_content(
+            contents=[*messages, {"role": "user", "parts": [{"text": prompt}]}],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=1500,
+            ),
+            stream=True
+        )
+        return response
+    except Exception as e:
+        return None
+
 st.title("My lab3 Question answering chatbot")
 
 # Sidebar: URL inputs
@@ -91,7 +116,7 @@ url2 = st.sidebar.text_input("Enter the second URL (optional):")
 st.sidebar.header("LLM Provider")
 llm_provider = st.sidebar.selectbox(
     "Choose your LLM provider:",
-    options=["OpenAI GPT-4O-Mini", "OpenAI GPT-4O", "Cohere"]
+    options=["OpenAI GPT-4O-Mini", "OpenAI GPT-4O", "Cohere", "Gemini"]
 )
 
 # Sidebar: Conversation memory type
@@ -108,6 +133,9 @@ if "OpenAI" in llm_provider:
 elif "Cohere" in llm_provider:
     cohere_api_key = st.secrets['cohere_key']
     client, is_valid, message = verify_cohere_key(cohere_api_key)
+else:
+    gemini_api_key = st.secrets['gemini_key']
+    client, is_valid, message = verify_gemini_key(gemini_api_key)
 
 if is_valid:
     st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
@@ -136,7 +164,11 @@ combined_document = "\n\n".join(documents)
 # Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        role = "user" if message["role"] == "user" else "system"
+        st.markdown(role)
+    with st.chat_message(role):
+        content = message.get("content") or  msg["parts"][0]["text"]
+        st.markdown(content)
 
 # Chat input
 if prompt := st.chat_input("What would you like to know?"):
@@ -144,13 +176,15 @@ if prompt := st.chat_input("What would you like to know?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    if llm_provider == "Gemini":
+        context_message = {"role": "model", "parts": [{"text": f"Here are the documents to reference: {combined_document}"}]}
+    else:
+        context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
     messages_for_llm = [context_message] + st.session_state.messages
 
     # Apply conversation memory type
     if memory_type == "Buffer of 5 questions":
-        messages_for_llm = messages_for_llm[-11:]  # System message + last 5 Q&A pairs
+        messages_for_llm = messages_for_llm[-5:]  # System message + last 5 Q&A pairs
     elif memory_type == "Conversation summary":
         messages_for_llm = [context_message, messages_for_llm[-1]]
     else:
@@ -182,4 +216,13 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += event.text
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
+        else:
+            response = generate_gemini_response(client, messages_for_llm, prompt)
+            if response:
+                with st.chat_message("system"):
+                    for chunk in response:
+                        if chunk.text:
+                            full_response += chunk.text
+                            message_placeholder.markdown(full_response + "▌")
+                    message_placeholder.markdown(full_response)
     st.session_state.messages.append({"role": "system", "content": full_response})

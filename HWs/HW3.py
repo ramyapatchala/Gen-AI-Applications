@@ -22,18 +22,19 @@ def read_webpage_from_url(url):
         return None
 
 # Function to calculate tokens
-def calculate_tokens(messages, encoding):
+def calculate_tokens(messages):
+    """Calculate total tokens for a list of messages."""
     total_tokens = 0
     for msg in messages:
         total_tokens += len(encoding.encode(msg['content']))
     return total_tokens
 
-# Function to truncate messages by tokens
-def truncate_messages_by_tokens(messages, max_tokens, encoding):
-    total_tokens = calculate_tokens(messages, encoding)
+def truncate_messages_by_tokens(messages, max_tokens):
+    """Truncate the message buffer to ensure it stays within max_tokens."""
+    total_tokens = calculate_tokens(messages)
     while total_tokens > max_tokens and len(messages) > 1:
         messages.pop(0)
-        total_tokens = calculate_tokens(messages, encoding)
+        total_tokens = calculate_tokens(messages)
     return messages
 
 # Function to verify OpenAI API key
@@ -222,9 +223,7 @@ if prompt := st.chat_input("What would you like to know?"):
         {"role": "system", "content": f"Conversation summary: {st.session_state.conversation_summary}"},
         st.session_state.messages[-1]]  # Include only the latest user message
     else:
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-        messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
-    
+        messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000)
 
     with st.chat_message("system"):
         message_placeholder = st.empty()

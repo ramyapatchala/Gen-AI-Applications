@@ -198,17 +198,19 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += chunk.choices[0].delta.content
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "system", "content": full_response})
         elif llm_provider == "Cohere":
             events = generate_cohere_response(client, messages_for_llm)
-            if events:
-                response_text = ""
-                for event in events:
-                    if event.event_type == "text-generation":
-                        response_text += str(event.text)
-                st.write(response_text)
+            response_placeholder = st.empty()
+            full_response = ""
+            for event in events:
+                if event.event_type == "text-generation":
+                    full_response += event.text
+                    response_placeholder.markdown(full_response + "▌")
+            response_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "system", "content": full_response})
         else:  # Gemini
             full_response = generate_gemini_response(client, messages_for_llm)
             if full_response:
                 message_placeholder.markdown(full_response)
 
-    st.session_state.messages.append({"role": "system", "content": full_response})

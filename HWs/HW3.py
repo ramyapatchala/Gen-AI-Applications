@@ -93,8 +93,13 @@ def verify_gemini_key(api_key):
 
 def generate_gemini_response(client, messages, prompt):
     try:
+        msgs = []
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            msgs.append({"role": role, "parts": [{"text": msg["parts"][0]["text"]}]})
+
         response = client.generate_content(
-            contents=[*messages, {"role": "user", "parts": [{"text": prompt}]}],
+            contents=[*msgs, {"role": "user", "parts": [{"text": prompt}]}],
             generation_config=genai.types.GenerationConfig(
                 temperature=0,
                 max_output_tokens=1500,

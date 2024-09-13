@@ -190,12 +190,7 @@ if prompt := st.chat_input("What would you like to know?"):
     else:
         encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
-
-    # Prepare chat history for Cohere API
-    chat_history = [
-        {"role": msg["role"], "message": msg["content"]}
-        for msg in st.session_state.messages[:-1]  # Exclude the last message
-    ]
+    
 
     with st.chat_message("system"):
         message_placeholder = st.empty()

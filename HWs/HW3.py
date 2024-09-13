@@ -41,12 +41,11 @@ def verify_cohere_key(api_key):
     except Exception as e:
         return None, False, str(e)
 # Function to generate response using Cohere
-def generate_cohere_response(client, prompt, chat_history):
+def generate_cohere_response(client, prompt):
     try:
         stream = client.chat_stream(
-            model='command',
+            model='command-r',
             message=prompt,
-            chat_history=chat_history,
             temperature=0,       
             max_tokens=1500
         )
@@ -137,7 +136,7 @@ if prompt := st.chat_input("What would you like to know?"):
         message_placeholder = st.empty()
         full_response = ""
         if "Cohere" in llm_provider:
-            stream = generative_cohere_response(client, messages_for_llm)
+            stream = generate_cohere_response(client, messages_for_llm)
             if stream:
                 for event in stream:
                     if event.event_type == "text-generation":

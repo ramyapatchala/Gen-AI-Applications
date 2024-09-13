@@ -163,11 +163,9 @@ combined_document = "\n\n".join(documents)
 
 # Display chat history
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        role = "user" if message["role"] == "user" else "system"
-        st.markdown(role)
+    role = "user" if message["role"] == "user" else "system"
     with st.chat_message(role):
-        content = message.get("content") or  msg["parts"][0]["text"]
+        content = message.get("content") or  message["parts"][0]["text"]
         st.markdown(content)
 
 # Chat input

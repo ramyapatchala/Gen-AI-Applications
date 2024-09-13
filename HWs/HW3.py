@@ -18,6 +18,28 @@ def read_webpage_from_url(url):
         st.error(f"Error processing the webpage: {e}")
         return None
 
+# Function to calculate tokens
+def calculate_tokens(messages, encoding):
+    total_tokens = 0
+    for msg in messages:
+        total_tokens += len(encoding.encode(msg['content']))
+    return total_tokens
+
+# Function to truncate messages by tokens
+def truncate_messages_by_tokens(messages, max_tokens, encoding):
+    total_tokens = calculate_tokens(messages, encoding)
+    while total_tokens > max_tokens and len(messages) > 1:
+        messages.pop(0)
+        total_tokens = calculate_tokens(messages, encoding)
+    return messages
+    
+def verify_cohere_key(api_key):
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 # Function to generate response using Cohere
 def generate_cohere_response(client, prompt, chat_history):
     try:
@@ -40,6 +62,33 @@ st.sidebar.header("URL Inputs")
 url1 = st.sidebar.text_input("Enter the first URL:")
 url2 = st.sidebar.text_input("Enter the second URL (optional):")
 
+# Sidebar: LLM provider selection
+st.sidebar.header("LLM Provider")
+llm_provider = st.sidebar.selectbox(
+    "Choose your LLM provider:",
+    options=["Cohere"]
+)
+
+# Sidebar: Conversation memory type
+st.sidebar.header("Conversation Memory")
+memory_type = st.sidebar.radio(
+    "Choose conversation memory type:",
+    options=["Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens"]
+)
+
+if "Cohere" in llm_provider:
+    cohere_api_key = st.secrets['cohere_key']
+    client, is_valid, message = verify_cohere_key(cohere_api_key)
+
+if is_valid:
+    st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
+else:
+    st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
+    st.stop()
+
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = []
 # Process URLs
 documents = []
 if url1:
@@ -54,19 +103,10 @@ if url2:
 # Combine documents
 combined_document = "\n\n".join(documents)
 
-# Initialize the Cohere client
-if 'client' not in st.session_state:
-    api_key = st.secrets['cohere_key']
-    st.session_state.client = cohere.Client(api_key)
-
-# Initialize message history
-if 'messages' not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": f"Here are the documents to reference: {combined_document}\nHow can I help you?"}]
-
 # Display chat history
 for msg in st.session_state.messages:
-    chat_msg = st.chat_message("assistant" if msg["role"] == "system" else "user")
-    chat_msg.write(msg["content"])
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 # Chat input
 if prompt := st.chat_input("What would you like to know?"):
@@ -74,32 +114,34 @@ if prompt := st.chat_input("What would you like to know?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-    
+
+    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    messages_for_llm = [context_message] + st.session_state.messages
+
+    # Apply conversation memory type
+    if memory_type == "Buffer of 5 questions":
+        messages_for_llm = messages_for_llm[-11:]  # System message + last 5 Q&A pairs
+    elif memory_type == "Conversation summary":
+        messages_for_llm = [context_message, messages_for_llm[-1]]
+    else:
+        encoding = tiktoken.encoding_for_model(model if "OpenAI" in llm_provider else "gpt-3.5-turbo")
+        messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
+
     # Prepare chat history for Cohere API
     chat_history = [
         {"role": msg["role"], "message": msg["content"]}
         for msg in st.session_state.messages[:-1]  # Exclude the last message
     ]
-    
-    # Generate response using Cohere API
-    client = st.session_state.client
-    stream = generate_cohere_response(client, prompt, chat_history)
-    
-    if stream:
-        # Display assistant response
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
-            for event in stream:
-                if event.event_type == "text-generation":
-                    full_response += event.text
-                    response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "system", "content": full_response})
-        
-        # Limit chat history to last 5 messages
-        st.session_state.messages = st.session_state.messages[-5:]
-    else:
-        st.error("Failed to generate a response. Please try again.")
+
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        if "Cohere" in llm_provider:
+            stream = generative_cohere_response(client, messages_for_llm)
+            if stream:
+                for event in stream:
+                    if event.event_type == "text-generation":
+                        full_response += event.text
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+     st.session_state.messages.append({"role": "assistant", "content": full_response})

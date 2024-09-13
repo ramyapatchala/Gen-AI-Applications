@@ -1,8 +1,9 @@
 import streamlit as st
-import cohere
+import google.generativeai as genai
 import requests
 from bs4 import BeautifulSoup
 import tiktoken
+
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
     try:
@@ -32,32 +33,24 @@ def truncate_messages_by_tokens(messages, max_tokens, encoding):
         messages.pop(0)
         total_tokens = calculate_tokens(messages, encoding)
     return messages
-    
-def verify_cohere_key(api_key):
-    try:
-        client = cohere.Client(api_key)
-        client.generate(prompt="Hello", max_tokens=5)
-        return client, True, "API key is valid"
-    except Exception as e:
-        return None, False, str(e)
 
 # Function to generate response using Cohere
-def generate_cohere_response(client, messages):
+def generate_gemini_response(client, messages, prompt):
     try:
-        stream = client.chat_stream(
-            model='command-r',
-            message=messages[-1]['content'],
-            chat_history=[{"role": m['role'], "message": m['content']} for m in messages[:-1]],
-            temperature=0,       
-            max_tokens=1500
+        response = client.generate_content(
+            contents=[*messages, {"role": "user", "parts": prompt}],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=1500,
+            ),
+            stream=True
         )
-        return stream
+        return response
     except Exception as e:
-        st.error(f"Error generating response: {e}", icon="❌")
-        return None
+        st.error(f"Error generating response: {str(e)}")
+        return None    
 
 st.title("My lab3 Question answering chatbot")
-
 # Sidebar: URL inputs
 st.sidebar.header("URL Inputs")
 url1 = st.sidebar.text_input("Enter the first URL:")
@@ -67,7 +60,7 @@ url2 = st.sidebar.text_input("Enter the second URL (optional):")
 st.sidebar.header("LLM Provider")
 llm_provider = st.sidebar.selectbox(
     "Choose your LLM provider:",
-    options=["Cohere"]
+    options=["Gemini"]
 )
 
 # Sidebar: Conversation memory type
@@ -77,19 +70,15 @@ memory_type = st.sidebar.radio(
     options=["Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens"]
 )
 
-if "Cohere" in llm_provider:
-    cohere_api_key = st.secrets['cohere_key']
-    client, is_valid, message = verify_cohere_key(cohere_api_key)
+# Initialize the Gemini client
+if 'client' not in st.session_state:
+    api_key = st.secrets['gemini_key']
+    genai.configure(api_key=api_key)
+    st.session_state.client = genai.GenerativeModel('gemini-pro')
 
-if is_valid:
-    st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
-else:
-    st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
-    st.stop()
-
-# Initialize session state
+# Initialize message history
 if 'messages' not in st.session_state:
-    st.session_state['messages'] = []
+    st.session_state.messages = []
 
 # Process URLs
 documents = []
@@ -106,20 +95,18 @@ if url2:
 combined_document = "\n\n".join(documents)
 
 # Display chat history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    chat_msg = st.chat_message("system" if msg["role"] == "model" else "user")
+    chat_msg.write(msg["parts"])
 
 # Chat input
-if prompt := st.chat_input("What would you like to know?"):
+if prompt := st.chat_input("What is up?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "parts": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    context_message = {"role": "system", "parts": f"Here are the documents to reference: {combined_document}"}
     messages_for_llm = [context_message] + st.session_state.messages
-
     # Apply conversation memory type
     if memory_type == "Buffer of 5 questions":
         messages_for_llm = messages_for_llm[-11:]  # System message + last 5 Q&A pairs
@@ -128,22 +115,23 @@ if prompt := st.chat_input("What would you like to know?"):
     else:
         encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000, encoding)
-
-    # Prepare chat history for Cohere API
-    chat_history = [
-        {"role": msg["role"], "message": msg["content"]}
-        for msg in st.session_state.messages[:-1]  # Exclude the last message
-    ]
-
+    
+    # Prepare chat history for Gemini API
+    chat_history = st.session_state.messages[:-1]  # Exclude the last message
+    
+    # Generate response using Gemini API
+    client = st.session_state.client
+    response = generate_gemini_response(client, chat_history, prompt)
+    # Display assistant response
     with st.chat_message("system"):
-        message_placeholder = st.empty()
+        response_placeholder = st.empty()
         full_response = ""
-        if "Cohere" in llm_provider:
-            stream = generate_cohere_response(client, messages_for_llm)
-            if stream:
-                for event in stream:
-                    if event.event_type == "text-generation":
-                        full_response += event.text
-                        message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "system", "content": full_response})
+        for chunk in response:
+            if chunk.text:
+                full_response += chunk.text
+                response_placeholder.markdown(full_response + "▌")
+        response_placeholder.markdown(full_response)
+        
+        # Add assistant response to chat history
+    st.session_state.messages.append({"role": "system", "parts":full_response})
+        

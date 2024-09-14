@@ -111,34 +111,47 @@ def generate_gemini_response(client, messages, prompt):
     except Exception as e:
         return None
 
+
 def generate_conversation_summary(client, messages, llm_provider):
     if llm_provider == 'Gemini':
-        summary_prompt = []
+        msgs = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
-            summary_prompt.append({"role": role, "parts": [{"text": msg["content"]}]})
-        summary_prompt.insert(0, {"role": "user", "parts": [{"text": "Summarize the key points of this conversation concisely:"}]})
-        response = client.generate_content(summary_prompt)
+            msgs.append({"role": role, "parts": [{"text": msg["content"]}]})
+        prompt = {"role": "user", "parts": [{"text": "Summarize the key points of this conversation concisely:"}]}
+        response = client.generate_content(
+            contents=[prompt, *msgs],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=150,
+            ),
+        )
         return response.text
-    else:
+    elif "OpenAI" in llm_provider:
         summary_prompt = "Summarize the key points of this conversation concisely:"
         for msg in messages:
             summary_prompt += f"\n{msg['role']}: {msg['content']}"
-        
-        if "OpenAI" in llm_provider:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o",
-                messages=[{"role": "user", "content": summary_prompt}],
-                max_tokens=150
-            )
-            return response.choices[0].message.content
-        else:  # Cohere
-            response = client.generate(
-                prompt=summary_prompt,
-                max_tokens=150,
-                temperature=0.7,
-            )
-            return response.generations[0].text
+        response = client.chat.completions.create(
+            model="gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o",
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=150
+        )
+        return response.choices[0].message.content
+    else:  # Cohere
+        summary_prompt = "Summarize the key points of this conversation concisely:"
+        chat_history = []
+        for msg in messages:
+            chat_history.append({"role": msg['role'], "message": msg['content']})
+            summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        response = client.chat(
+            model='command-r',
+            message=summary_prompt,
+            chat_history=chat_history,
+            temperature=0,       
+            max_tokens=150
+        )
+        return response.text
+
 st.title("My lab3 Question answering chatbot")
 
 # Sidebar: URL inputs

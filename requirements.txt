@@ -10,5 +10,5 @@ tiktoken
 google-generativeai
 chromadb
 pysqlite3-binary
-protobuf==3.20
+protobuf==3.20.2
 PyPDF2

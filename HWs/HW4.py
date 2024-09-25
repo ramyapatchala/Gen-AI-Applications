@@ -238,7 +238,7 @@ memory_type = st.sidebar.radio(
 if "OpenAI" in llm_provider:
     openai_api_key = st.secrets['key1']
     client, is_valid, message = verify_openai_key(openai_api_key)
-    model = "gpt-4-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4"
+    model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
 elif "Cohere" in llm_provider:
     cohere_api_key = st.secrets['cohere_key']
     client, is_valid, message = verify_cohere_key(cohere_api_key)

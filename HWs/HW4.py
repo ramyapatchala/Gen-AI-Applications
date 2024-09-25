@@ -334,8 +334,3 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
                 message_placeholder.markdown(full_response)
     
     st.session_state.messages.append({"role": "system", "content": full_response})
-
-    if results:
-        st.write("Related documents:")
-        for i, doc_id in enumerate(results['ids'][0]):
-            st.write(f"{i+1}. {doc_id}")

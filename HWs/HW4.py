@@ -175,7 +175,7 @@ def add_to_collection(collection, text, filename):
 
 def setup_vectordb():
     if 'HW4_vectorDB' not in st.session_state:
-        client = chromadb.PersistentClient(path="./chroma_db")
+        client = chromadb.PersistentClient()
         collection = client.get_or_create_collection(
             name="HW4Collection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
@@ -199,7 +199,7 @@ def setup_vectordb():
 def query_vectordb(query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        openai_client = st.session_state.openai_client
+        openai_client = OpenAI(api_key = st.secrets['key1'])
         response = openai_client.embeddings.create(
             input=query,
             model="text-embedding-3-small"

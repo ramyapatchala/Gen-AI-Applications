@@ -258,7 +258,7 @@ if 'messages' not in st.session_state:
 
 # Display chat history
 for message in st.session_state.messages:
-    role = "user" if message["role"] == "user" else "assistant"
+    role = "user" if message["role"] == "user" else "system"
     with st.chat_message(role):
         st.markdown(message["content"])
 
@@ -295,7 +295,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     else:
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("system"):
         message_placeholder = st.empty()
         full_response = ""
         if "OpenAI" in llm_provider:
@@ -323,7 +323,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
     
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "system", "content": full_response})
 
     if results:
         st.write("Related documents:")

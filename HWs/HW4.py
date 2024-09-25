@@ -160,7 +160,7 @@ def generate_conversation_summary(client, messages, llm_provider):
 
 # Vector DB functions
 def add_to_collection(collection, text, filename):
-    openai_client = st.session_state.openai_client
+    openai_client = OpenAI(api_key = st.secrets['key1'])
     response = openai_client.embeddings.create(
         input=text,
         model="text-embedding-3-small"

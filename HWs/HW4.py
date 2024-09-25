@@ -29,13 +29,13 @@ def add_to_collection(collection, text, filename):
 
 def setup_vectordb():
     if 'HW4_vectorDB' not in st.session_state:
-        client = chromadb.PersistentClient(path="./chroma_db")
+        client = chromadb.PersistentClient()
         collection = client.get_or_create_collection(
             name="HW4Collection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
         )
         
-        su_orgs_path = os.path.join(os.getcwd(), "su_orgs")
+        su_orgs_path = os.path.join(os.getcwd(), "HWs/su_orgs/")
         html_files = [f for f in os.listdir(su_orgs_path) if f.endswith('.html')]
         
         for html_file in html_files:

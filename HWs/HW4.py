@@ -174,8 +174,16 @@ def add_to_collection(collection, text, filename):
     return collection
 
 def setup_vectordb():
-    if 'HW4_vectorDB' not in st.session_state:
-        client = chromadb.PersistentClient()
+    db_path = "HW4_VectorDB"
+    
+    # Check if vector DB exists on disk
+    if not os.path.exists(db_path):
+        st.info("Setting up vector DB for the first time...")
+        
+        # Initialize the ChromaDB client with persistence
+        client = chromadb.PersistentClient(path=db_path)
+        
+        # Create or get the collection
         collection = client.get_or_create_collection(
             name="HW4Collection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
@@ -191,10 +199,12 @@ def setup_vectordb():
                 text = soup.get_text(separator=' ', strip=True)
                 collection = add_to_collection(collection, text, html_file)
         
-        st.session_state.HW4_vectorDB = collection
         st.success(f"VectorDB setup complete with {len(html_files)} HTML files!")
     else:
-        st.info("VectorDB already set up.")
+        # If it already exists, just load it
+        st.info("VectorDB already exists. Loading from disk...")
+        client = chromadb.PersistentClient(path=db_path)
+        st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
 
 def query_vectordb(query, k=3):
     if 'HW4_vectorDB' in st.session_state:

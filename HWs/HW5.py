@@ -105,8 +105,8 @@ def generate_llm_response(client, query, context=None):
     if context:
         messages.append({"role": "system", "content": context})
     
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
+    response = client.chat.completions.create(
+        model="gpt-4o",
         messages=messages,
         functions=functions,
         function_call="auto"  # Let the model decide when to call the function

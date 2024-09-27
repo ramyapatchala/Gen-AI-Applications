@@ -3,6 +3,7 @@ import openai
 import os
 import chromadb
 import json
+from bs4 import BeautifulSoup  # Make sure to import BeautifulSoup
 from PyPDF2 import PdfReader
 __import__('pysqlite3')
 import sys
@@ -60,10 +61,10 @@ def add_to_collection(collection, text, filename):
     return collection
 
 # Function to perform vector search in ChromaDB
-def search_vectordb(query):
+def search_vectordb(client, query):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        response = openai.Embedding.create(
+        response = client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
         )
@@ -123,7 +124,7 @@ openai_api_key = st.secrets["key1"]
 client, is_valid, message = verify_openai_key(openai_api_key)
 
 if is_valid:
-    st.sidebar.success(f"OpenAI API key is valid!", icon="✅")
+    st.sidebar.success("OpenAI API key is valid!", icon="✅")
 else:
     st.sidebar.error(f"Invalid OpenAI API key: {message}", icon="❌")
     st.stop()
@@ -143,6 +144,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     # Generate LLM response with function calling
     response = generate_llm_response(client, prompt)
     st.write(response)
+
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
         msg = response.choices[0].message
@@ -153,7 +155,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         if function_name == "search_vectordb":
             function_args = json.loads(function_args)
             query = function_args["query"]
-            context = search_vectordb(query)
+            context = search_vectordb(client, query)  # Pass client to the search function
             # Re-generate the LLM response with the new context
             response = generate_llm_response(client, prompt, context=context)
     

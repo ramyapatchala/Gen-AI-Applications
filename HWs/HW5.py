@@ -96,14 +96,15 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         function_call = response.choices[0].message["function_call"]
         function_name = function_call["name"]
         function_args = function_call["arguments"]
-
+        st.write("Step 1")
         # Execute the function call
         if function_name == "search_vectordb":
             query = function_args["query"]
             context = search_vectordb(query)
+            st.write("Step 2")
             # Re-generate the LLM response with the new context
             response = generate_llm_response(client, prompt, context=context)
-    
+    st.write("Step 2")
     # Display the final response
     st.write(response.choices[0].message['content'])
 

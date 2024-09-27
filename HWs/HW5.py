@@ -7,11 +7,62 @@ __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
+# Verify OpenAI API key
+def verify_openai_key(api_key):
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
+# Function to set up the VectorDB
+def setup_vectordb():
+    db_path = "HW4_VectorDB"
+    
+    if not os.path.exists(db_path):
+        st.info("Setting up vector DB for the first time...")
+        client = chromadb.PersistentClient(path=db_path)
+        collection = client.get_or_create_collection(
+            name="HW4Collection",
+            metadata={"hnsw:space": "cosine", "hnsw:M": 32}
+        )
+
+        su_orgs_path = os.path.join(os.getcwd(), "HWs/su_orgs/")
+        html_files = [f for f in os.listdir(su_orgs_path) if f.endswith('.html')]
+        
+        for html_file in html_files:
+            file_path = os.path.join(su_orgs_path, html_file)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                soup = BeautifulSoup(file, 'html.parser')
+                text = soup.get_text(separator=' ', strip=True)
+                add_to_collection(collection, text, html_file)
+
+        st.success(f"VectorDB setup complete with {len(html_files)} HTML files!")
+    else:
+        st.info("VectorDB already exists. Loading from disk...")
+        client = chromadb.PersistentClient(path=db_path)
+        st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
+
+# Function to add documents to the collection
+def add_to_collection(collection, text, filename):
+    response = openai.Embedding.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    embedding = response.data[0].embedding
+    collection.add(
+        documents=[text],
+        ids=[filename],
+        embeddings=[embedding]
+    )
+    return collection
+
 # Function to perform vector search in ChromaDB
 def search_vectordb(query):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        response = openai.embeddings.create(
+        response = openai.Embedding.create(
             input=query,
             model="text-embedding-3-small"
         )
@@ -21,7 +72,7 @@ def search_vectordb(query):
             include=['documents', 'distances', 'metadatas'],
             n_results=3
         )
-        return results['documents'][0]
+        return results['documents'][0] if results['documents'] else "No relevant information found."
     else:
         return "VectorDB not set up."
 
@@ -44,15 +95,6 @@ def create_openai_functions():
         }
     ]
     return functions
-
-# Function to verify OpenAI API key
-def verify_openai_key(api_key):
-    try:
-        client = openai.OpenAI(api_key=api_key)
-        client.models.list()
-        return client, True, "API key is valid"
-    except Exception as e:
-        return None, False, str(e)
 
 # Function to call the OpenAI API with function calling
 def generate_llm_response(client, query, context=None):
@@ -99,21 +141,21 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
 
     # Generate LLM response with function calling
     response = generate_llm_response(client, prompt)
-    
+    st.write("Step 1")
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
         function_call = response.choices[0].message["function_call"]
         function_name = function_call["name"]
         function_args = function_call["arguments"]
-        st.write("Step 1")
+        st.write("Step 2")
         # Execute the function call
         if function_name == "search_vectordb":
             query = function_args["query"]
             context = search_vectordb(query)
-            st.write("Step 2")
+            st.write("Step 3")
             # Re-generate the LLM response with the new context
             response = generate_llm_response(client, prompt, context=context)
-    st.write("Step 2")
+            st.write("Step 4")
     # Display the final response
+    st.write("Step 5")
     st.write(response.choices[0].message['content'])
-

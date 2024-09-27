@@ -150,7 +150,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         st.write("Step 2")
         # Execute the function call
         if function_name == "search_vectordb":
-            query = function_args.query
+            query = function_args["query"]
             context = search_vectordb(query)
             st.write("Step 3")
             # Re-generate the LLM response with the new context

@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+import json
 import os
 import chromadb
 from PyPDF2 import PdfReader
@@ -144,17 +145,18 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.write("Step 1")
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
-        st.write(response.choices[0])
-        function_call = response.choices[0].message.function_call
-        function_name = function_call.name
-        function_args = function_call.arguments
-        st.write("Step 2")
-        st.write(function_args)
-        st.write(function_call.arguments.query)
-        st.write(function_call.arguments['query'])
-        st.write(type(function_args))
+        arguments_str = function_call_message["message"]["function_call"]["arguments"]
+
+        # Parse the arguments string into a dictionary
+        function_args = json.loads(arguments_str)
+        
+        # Now you can access the query
+        query = function_args["query"]
+        st.write(query)
+        function_name = function_call_message["message"]["function_call"]["name"]
         # Execute the function call
         if function_name == "search_vectordb":
+            st.write(query)
             query = function_args["query"]
             context = search_vectordb(query)
             st.write("Step 3")

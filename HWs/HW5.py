@@ -149,6 +149,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         function_args = function_call.arguments
         st.write("Step 2")
         st.write(function_args)
+        st.write(function_args.query)
         st.write(type(function_args))
         # Execute the function call
         if function_name == "search_vectordb":

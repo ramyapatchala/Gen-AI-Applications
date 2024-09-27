@@ -1,12 +1,14 @@
 import streamlit as st
 import openai
-import json
 import os
-import chromadb
 from PyPDF2 import PdfReader
-from bs4 import BeautifulSoup  # Import BeautifulSoup
+__import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import chromadb
+import tiktoken
+from bs4 import BeautifulSoup
+import requests
 
 # Verify OpenAI API key
 def verify_openai_key(api_key):

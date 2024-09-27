@@ -158,4 +158,4 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
             st.write("Step 4")
     # Display the final response
     st.write("Step 5")
-    st.write(response.choices[0].message['content'])
+    st.write(response.choices[0].message.content)

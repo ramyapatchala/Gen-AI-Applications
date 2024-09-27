@@ -144,12 +144,13 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.write(response)
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
-        function_call = response.choices[0].message["function_call"]
-        function_name = function_call["name"]
-        function_args = function_call["arguments"]
+        msg = response.choices[0].message
+        function_args = msg.function_call.arguments
+        function_name = msg.function_call.name
 
         # Execute the function call
         if function_name == "search_vectordb":
+            function_args = json.loads(function_args)
             query = function_args["query"]
             context = search_vectordb(query)
             # Re-generate the LLM response with the new context

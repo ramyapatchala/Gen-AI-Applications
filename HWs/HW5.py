@@ -173,6 +173,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     # Generate response using OpenAI
     model = "gpt-4o-mini"
     full_response = ""
+    message_placeholder = st.empty()
     stream = generate_openai_response(client, messages_for_llm, model)
     if stream:
       for chunk in stream:

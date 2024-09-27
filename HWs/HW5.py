@@ -105,11 +105,10 @@ def setup_vectordb():
         st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
 
 
-def query_vectordb(query, k=3):
+def query_vectordb(client, query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        openai_client = OpenAI(api_key = st.secrets['key1'])
-        response = openai_client.embeddings.create(
+        response = client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
         )
@@ -162,7 +161,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Query VectorDB for relevant documents
-    results = query_vectordb(prompt)
+    results = query_vectordb(client, prompt)
     if results:
         context = " ".join([doc for doc in results['documents'][0]])
         context_message = {"role": "system", "content": f"Relevant information: {context}"}

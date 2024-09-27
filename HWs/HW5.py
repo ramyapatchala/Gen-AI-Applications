@@ -79,42 +79,39 @@ def search_vectordb(client, query):
         return "VectorDB not set up."
 
 # OpenAI function calling setup
-def create_openai_functions():
-    functions = [
-        {
-            "name": "search_vectordb",
-            "description": "Search the vector database for relevant information.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The query to search the vector database."
-                    }
+tools = [
+    {
+        "type": "function",
+        "functions": 
+            {
+                "name": "search_vectordb",
+                "description": "Search the vector database for relevant information.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query to search the vector database."
+                        }
+                    },
+                    "required": ["query"]
                 },
-                "required": ["query"]
-            }
-        }
-    ]
-    return functions
+            },
+    }]
 
-# Function to call the OpenAI API with function calling
-def generate_llm_response(client, query, context=None):
-    messages = [{"role": "user", "content": query}]
-    functions = create_openai_functions()
-
-    # If we already have context (from vector search), pass it to LLM
-    if context:
-        messages.append({"role": "system", "content": context})
-    
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        functions=functions,
-        function_call="auto"  # Let the model decide when to call the function
-    )
-    
-    return response
+# Function for OpenAI chat completion requests
+def chat_completion_request(messages, tools):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+        return response
+    except Exception as e:
+        st.error(f"Unable to generate ChatCompletion response. Error: {e}")
+        return e
 
 # Streamlit App
 st.title("HW5 Interactive Course/Club Search Chatbot")
@@ -142,22 +139,24 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Generate LLM response with function calling
-    response = generate_llm_response(client, prompt)
+    response = chat_completion_request(st.session_state.messages, tools)
     st.write(response)
 
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
         msg = response.choices[0].message
-        function_args = msg.function_call.arguments
-        function_name = msg.function_call.name
+        function_args = msg['function_call']['arguments']
+        function_name = msg['function_call']['name']
 
         # Execute the function call
         if function_name == "search_vectordb":
             function_args = json.loads(function_args)
             query = function_args["query"]
             context = search_vectordb(client, query)  # Pass client to the search function
+
             # Re-generate the LLM response with the new context
-            response = generate_llm_response(client, prompt, context=context)
-    
+            st.session_state.messages.append({"role": "assistant", "content": context})
+            response = chat_completion_request(st.session_state.messages, tools)
+
     # Display the final response
     st.write(response.choices[0].message['content'])

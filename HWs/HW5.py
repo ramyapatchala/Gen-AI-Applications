@@ -2,6 +2,7 @@ import streamlit as st
 import openai
 import os
 import chromadb
+import json
 from PyPDF2 import PdfReader
 __import__('pysqlite3')
 import sys

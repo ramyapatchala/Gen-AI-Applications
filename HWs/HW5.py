@@ -45,6 +45,15 @@ def create_openai_functions():
     ]
     return functions
 
+# Function to verify OpenAI API key
+def verify_openai_key(api_key):
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
+
 # Function to call the OpenAI API with function calling
 def generate_llm_response(client, query, context=None):
     messages = [{"role": "user", "content": query}]

@@ -4,18 +4,18 @@ import json
 import os
 import chromadb
 from PyPDF2 import PdfReader
-__import__('pysqlite3')
+from bs4 import BeautifulSoup  # Import BeautifulSoup
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 # Verify OpenAI API key
 def verify_openai_key(api_key):
     try:
-        client = openai.OpenAI(api_key=api_key)
-        client.models.list()
-        return client, True, "API key is valid"
+        openai.api_key = api_key  # Set the API key directly
+        openai.Model.list()  # Use a valid method to check the API key
+        return True, "API key is valid"
     except Exception as e:
-        return None, False, str(e)
+        return False, str(e)
 
 # Function to set up the VectorDB
 def setup_vectordb():
@@ -57,7 +57,6 @@ def add_to_collection(collection, text, filename):
         ids=[filename],
         embeddings=[embedding]
     )
-    return collection
 
 # Function to perform vector search in ChromaDB
 def search_vectordb(query):
@@ -120,7 +119,7 @@ st.title("HW5 Interactive Course/Club Search Chatbot")
 
 # Sidebar: API key verification
 openai_api_key = st.secrets["key1"]
-client, is_valid, message = verify_openai_key(openai_api_key)
+is_valid, message = verify_openai_key(openai_api_key)
 
 if is_valid:
     st.sidebar.success(f"OpenAI API key is valid!", icon="✅")
@@ -141,28 +140,25 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Generate LLM response with function calling
-    response = generate_llm_response(client, prompt)
-    st.write("Step 1")
+    response = generate_llm_response(openai, prompt)
+    
     if response.choices[0].finish_reason == "function_call":
         # The LLM decided to call the `search_vectordb` function
-        arguments_str = function_call_message["message"]["function_call"]["arguments"]
+        function_call_message = response.choices[0].message  # Get the function call message
+        arguments_str = function_call_message["function_call"]["arguments"]
 
         # Parse the arguments string into a dictionary
         function_args = json.loads(arguments_str)
         
         # Now you can access the query
         query = function_args["query"]
-        st.write(query)
-        function_name = function_call_message["message"]["function_call"]["name"]
+        function_name = function_call_message["function_call"]["name"]
+        
         # Execute the function call
         if function_name == "search_vectordb":
-            st.write(query)
-            query = function_args["query"]
             context = search_vectordb(query)
-            st.write("Step 3")
             # Re-generate the LLM response with the new context
-            response = generate_llm_response(client, prompt, context=context)
-            st.write("Step 4")
+            response = generate_llm_response(openai, prompt, context=context)
+    
     # Display the final response
-    st.write("Step 5")
-    st.write(response.choices[0].message.content)
+    st.write(response.choices[0].message['content'])

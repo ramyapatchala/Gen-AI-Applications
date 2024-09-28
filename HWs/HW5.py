@@ -156,9 +156,11 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         msgs = []
         msgs.append({"role":"System", "content":f"Relevant information: \n {document}"})
         msgs.append(msg)
-        response = openai.chat.completions.create(
+        openai_client = OpenAI(api_key=st.secrets['key1'])
+        response = openai_client.chat.completions.create(
                     model='gpt-4o',
-                    messages= msgs
+                    messages= msgs,
+                    stream = True
                 )
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})

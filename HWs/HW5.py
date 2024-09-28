@@ -62,6 +62,8 @@ def chat_completion_request(messages, tools, tool_choice=None):
             tools=tools,
             tool_choice="auto",
         )
+        st.write(messages)
+        st.write(response)
         return response
     except Exception as e:
         st.error(f"Unable to generate ChatCompletion response. Error: {e}")

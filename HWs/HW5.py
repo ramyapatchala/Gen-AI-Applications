@@ -5,6 +5,7 @@ import chromadb
 from bs4 import BeautifulSoup
 from openai import OpenAI
 import json
+
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:
@@ -51,11 +52,11 @@ tools = [
 ]
 
 # Function for OpenAI chat completion requests
-def chat_completion_request(message, tools, tool_choice = None):
+def chat_completion_request(message, tools, tool_choice=None):
     try:
-        messages =[]
+        messages = []
         messages.append(message)
-        client = OpenAI(api_key = openai_api_key)
+        client = OpenAI(api_key=openai_api_key)
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
@@ -144,30 +145,59 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     msg = {"role": "user", "content": prompt}
     with st.chat_message("user"):
         st.markdown(prompt)
-    st.session_state.messages.append(msg)    
+    st.session_state.messages.append(msg)
+    
     # Generate response using OpenAI
     with st.chat_message("assistant"):
         response = chat_completion_request(msg, tools=tools)
-        tool_call = response.choices[0].message.tool_calls[0]
-        arguments = json.loads(tool_call.function.arguments)
-        query = arguments.get('query')
-        document = search_vectordb(query)['documents'][0]
-        msgs = []
-        msgs.append({"role":"system", "content":f"Relevant information: \n {document}"})
-        msgs.append(msg)
-        openai_client = OpenAI(api_key=st.secrets['key1'])
-        message_placeholder = st.empty()
-        full_response = ""
-        stream = openai_client.chat.completions.create(
-                    model='gpt-4o',
-                    messages= msgs,
-                    stream = True
-                )
-        if stream:
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    full_response += chunk.choices[0].delta.content
-                    message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
+        
+        # Check if a tool was used or not
+        tool_call = response.choices[0].message.get("tool_calls", [])
+        
+        if tool_call:
+            # If a tool is called, execute the tool and search the vector DB
+            tool_call_data = tool_call[0]
+            arguments = json.loads(tool_call_data.function.arguments)
+            query = arguments.get('query')
+            
+            # Call search_vectordb only if there is a tool call
+            document = search_vectordb(query)['documents'][0]
+            msgs = []
+            msgs.append({"role": "system", "content": f"Relevant information: \n {document}"})
+            msgs.append(msg)
+            
+            # Stream the final response from OpenAI
+            openai_client = OpenAI(api_key=st.secrets['key1'])
+            message_placeholder = st.empty()
+            full_response = ""
+            stream = openai_client.chat.completions.create(
+                        model='gpt-4o',
+                        messages=msgs,
+                        stream=True
+                    )
+            if stream:
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+        
+        else:
+            # If no tool is used, just call the LLM directly
+            openai_client = OpenAI(api_key=st.secrets['key1'])
+            message_placeholder = st.empty()
+            full_response = ""
+            stream = openai_client.chat.completions.create(
+                        model='gpt-4o',
+                        messages=[msg],
+                        stream=True
+                    )
+            if stream:
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+        
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": full_response})

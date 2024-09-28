@@ -1,11 +1,8 @@
 import streamlit as st
 import openai
 import os
-from PyPDF2 import PdfReader
 import chromadb
-import tiktoken
 from bs4 import BeautifulSoup
-import requests
 from openai import OpenAI
 
 # Function to verify OpenAI API key
@@ -38,7 +35,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "search_vectordb",
-            "description": "Search the vector database for relevant information.",
+            "description": "Search the vector database for relevant information about iSchool student organizations.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -54,7 +51,7 @@ tools = [
 ]
 
 # Function for OpenAI chat completion requests
-def chat_completion_request(messages, tools, tool_choice=None):
+def chat_completion_request(messages, tools):
     try:
         response = client.chat.completions.create(
             model="gpt-4-turbo-preview",
@@ -62,8 +59,6 @@ def chat_completion_request(messages, tools, tool_choice=None):
             tools=tools,
             tool_choice="auto",
         )
-        st.write(messages)
-        st.write(response)
         return response
     except Exception as e:
         st.error(f"Unable to generate ChatCompletion response. Error: {e}")
@@ -72,14 +67,9 @@ def chat_completion_request(messages, tools, tool_choice=None):
 def setup_vectordb():
     db_path = "HW4_VectorDB"
     
-    # Check if vector DB exists on disk
     if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")
-        
-        # Initialize the ChromaDB client with persistence
         client = chromadb.PersistentClient(path=db_path)
-        
-        # Create or get the collection
         collection = client.get_or_create_collection(
             name="HW4Collection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
@@ -97,7 +87,6 @@ def setup_vectordb():
         
         st.success(f"VectorDB setup complete with {len(html_files)} HTML files!")
     else:
-        # If it already exists, just load it
         st.info("VectorDB already exists. Loading from disk...")
         client = chromadb.PersistentClient(path=db_path)
         st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
@@ -122,10 +111,7 @@ def search_vectordb(query, k=3):
         return None
 
 # Streamlit App
-st.title("Interactive Data Search Chatbot")
-
-# Sidebar: LLM provider selection
-llm_provider = st.sidebar.selectbox("Choose LLM:", options=["OpenAI GPT-4-turbo-preview"])
+st.title("iSchool Student Organizations Chatbot")
 
 # API key verification
 openai_api_key = st.secrets["key1"]
@@ -146,37 +132,33 @@ if 'messages' not in st.session_state:
 
 # Display chat history
 for message in st.session_state.messages:
-    role = "user" if message["role"] == "user" else "assistant"
-    with st.chat_message(role):
+    with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # Chat input
 if prompt := st.chat_input("What would you like to know about iSchool student organizations?"):
     # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Query VectorDB for relevant documents
     results = search_vectordb(prompt)
     
     if results:
         context = " ".join([doc for doc in results['documents'][0]])
-        context_message = {"role": "user", "content": f"Relevant information: {context}  {prompt}" }
+        context_message = {"role": "system", "content": f"Relevant information: {context}"}
     else:
-        context_message = {"role": "user", "content": "No specific context found. {prompt}" }
+        context_message = {"role": "system", "content": "No specific context found."}
 
-    messages_for_llm = [context_message]
+    messages_for_llm = [context_message, {"role": "user", "content": prompt}]
 
     # Generate response using OpenAI
-    message_placeholder = st.empty()
-    response = chat_completion_request(messages_for_llm, tools=tools)
-    assistant_response = response.choices[0].message.content
-    
-    # Display assistant response
     with st.chat_message("assistant"):
-        st.markdown(assistant_response)
+        message_placeholder = st.empty()
+        response = chat_completion_request(messages_for_llm, tools=tools)
+        assistant_response = response.choices[0].message.content
+        message_placeholder.markdown(assistant_response)
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})

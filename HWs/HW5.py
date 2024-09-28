@@ -162,7 +162,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Query VectorDB for relevant documents
-    results = query_vectordb(client, prompt)
+    results = search_vectordb(client, prompt)
     
     if results:
         context = " ".join([doc for doc in results['documents'][0]])

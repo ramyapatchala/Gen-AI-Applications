@@ -92,6 +92,8 @@ def chat_completion_request(messages, tools, tool_choice=None):
             tools=tools,
             tool_choice="auto",
         )
+        st.write(messages)
+        st.write(response)
         return response
     except Exception as e:
         st.error(f"Unable to generate ChatCompletion response. Error: {e}")
@@ -188,9 +190,11 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
 
     # Query VectorDB for relevant documents
     results = query_vectordb(client, prompt)
+    
     if results:
         context = " ".join([doc for doc in results['documents'][0]])
         context_message = {"role": "system", "content": f"Relevant information: {context}"}
+        st.write('Contect Message: ', context_message)
     else:
         context_message = {"role": "system", "content": "No specific context found."}
 

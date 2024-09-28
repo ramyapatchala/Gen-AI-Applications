@@ -157,8 +157,8 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         if response.choices[0].finish_reason == "tool_calls":
             # The LLM decided to call the `search_vectordb` function
             msg = response.choices[0].message
-            function_args = msg['function_call']['arguments']
-            function_name = msg['function_call']['name']
+            function_args = msg['tool_calls']['function']['arguments']
+            function_name = msg['tool_calls']['function']['name']
 
             # Execute the function call
             if function_name == "search_vectordb":

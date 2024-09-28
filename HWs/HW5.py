@@ -82,7 +82,7 @@ def search_vectordb(client, query):
 tools = [
     {
         "type": "function",
-        "functions": 
+        "function": 
             {
                 "name": "search_vectordb",
                 "description": "Search the vector database for relevant information.",

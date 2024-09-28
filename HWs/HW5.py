@@ -10,20 +10,6 @@ import tiktoken
 from bs4 import BeautifulSoup
 import requests
 
-# Function to read webpage content from a URL
-def read_webpage_from_url(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-        document = " ".join([p.get_text() for p in soup.find_all("p")])
-        return document
-    except requests.RequestException as e:
-        st.error(f"Error reading webpage from {url}: {e}")
-        return None
-    except Exception as e:
-        st.error(f"Error processing the webpage: {e}")
-        return None
 
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
@@ -33,19 +19,6 @@ def verify_openai_key(api_key):
         return client, True, "API key is valid"
     except Exception as e:
         return None, False, str(e)
-
-# Function to generate summary using OpenAI
-def generate_openai_response(client, messages, model):
-    try:
-        stream = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            stream=True,
-        )
-        return stream
-    except Exception as e:
-        st.error(f"Error generating response: {e}", icon="❌")
-        return None
 
 # Vector DB functions
 def add_to_collection(collection, text, filename):
@@ -133,7 +106,7 @@ def setup_vectordb():
         st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
 
 
-def query_vectordb(client, query, k=3):
+def search_vectordb(client, query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
         response = client.embeddings.create(

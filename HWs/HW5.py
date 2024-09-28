@@ -158,6 +158,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         response = chat_completion_request(messages_for_llm, tools=tools)
+        st.write(response)
         assistant_response = response.choices[0].message.content
         message_placeholder.markdown(assistant_response)
     

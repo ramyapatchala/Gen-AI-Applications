@@ -9,14 +9,18 @@ __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
+# Global client variable
+client = None
+
 # Verify OpenAI API key
 def verify_openai_key(api_key):
+    global client
     try:
         client = openai.OpenAI(api_key=api_key)
-        client.models.list()
-        return client, True, "API key is valid"
+        client.models.list()  # Ensure the API key works
+        return True, "API key is valid"
     except Exception as e:
-        return None, False, str(e)
+        return False, str(e)
 
 # Function to set up the VectorDB
 def setup_vectordb():
@@ -48,33 +52,39 @@ def setup_vectordb():
 
 # Function to add documents to the collection
 def add_to_collection(collection, text, filename):
-    response = openai.Embedding.create(
-        input=text,
-        model="text-embedding-3-small"
-    )
-    embedding = response.data[0].embedding
-    collection.add(
-        documents=[text],
-        ids=[filename],
-        embeddings=[embedding]
-    )
-    return collection
-
-# Function to perform vector search in ChromaDB
-def search_vectordb(client, query):
-    if 'HW4_vectorDB' in st.session_state:
-        collection = st.session_state.HW4_vectorDB
-        response = client.embeddings.create(
-            input=query,
+    try:
+        response = openai.Embedding.create(
+            input=text,
             model="text-embedding-3-small"
         )
-        query_embedding = response.data[0].embedding
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            include=['documents', 'distances', 'metadatas'],
-            n_results=3
+        embedding = response['data'][0]['embedding']
+        collection.add(
+            documents=[text],
+            ids=[filename],
+            embeddings=[embedding]
         )
-        return results['documents'][0] if results['documents'] else "No relevant information found."
+    except Exception as e:
+        st.error(f"Error adding to collection: {e}")
+
+# Function to perform vector search in ChromaDB
+def search_vectordb(query):
+    if 'HW4_vectorDB' in st.session_state:
+        collection = st.session_state.HW4_vectorDB
+        try:
+            response = openai.Embedding.create(
+                input=query,
+                model="text-embedding-3-small"
+            )
+            query_embedding = response['data'][0]['embedding']
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                include=['documents', 'distances', 'metadatas'],
+                n_results=3
+            )
+            return results['documents'][0] if results['documents'] else "No relevant information found."
+        except Exception as e:
+            st.error(f"Error searching in VectorDB: {e}")
+            return "Error during search."
     else:
         return "VectorDB not set up."
 
@@ -82,25 +92,25 @@ def search_vectordb(client, query):
 tools = [
     {
         "type": "function",
-        "function": 
-            {
-                "name": "search_vectordb",
-                "description": "Search the vector database for relevant information.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The query to search the vector database."
-                        }
-                    },
-                    "required": ["query"]
+        "function": {
+            "name": "search_vectordb",
+            "description": "Search the vector database for relevant information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The query to search the vector database."
+                    }
                 },
+                "required": ["query"]
             },
-    }]
+        },
+    }
+]
 
 # Function for OpenAI chat completion requests
-def chat_completion_request(messages, tools):
+def chat_completion_request(messages):
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -108,18 +118,17 @@ def chat_completion_request(messages, tools):
             tools=tools,
             tool_choice="auto",
         )
-        st.write(response)
         return response
     except Exception as e:
         st.error(f"Unable to generate ChatCompletion response. Error: {e}")
-        return e
+        return None
 
 # Streamlit App
 st.title("HW5 Interactive Course/Club Search Chatbot")
 
 # Sidebar: API key verification
 openai_api_key = st.secrets["key1"]
-client, is_valid, message = verify_openai_key(openai_api_key)
+is_valid, message = verify_openai_key(openai_api_key)
 
 if is_valid:
     st.sidebar.success("OpenAI API key is valid!", icon="✅")
@@ -140,26 +149,29 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Generate LLM response with function calling
-    response = chat_completion_request(st.session_state.messages, tools)
-    st.write(response)
+    response = chat_completion_request(st.session_state.messages)
+    
+    if response:
+        st.write(response)
 
-    if response.choices[0].finish_reason == "function_call":
-        # The LLM decided to call the `search_vectordb` function
-        msg = response.choices[0].message
-        function_args = msg['function_call']['arguments']
-        function_name = msg['function_call']['name']
+        if response['choices'][0]['finish_reason'] == "function_call":
+            # The LLM decided to call the `search_vectordb` function
+            msg = response['choices'][0]['message']
+            function_args = msg['function_call']['arguments']
+            function_name = msg['function_call']['name']
 
-        # Execute the function call
-        if function_name == "search_vectordb":
-            function_args = json.loads(function_args)
-            query = function_args["query"]
-            
-            with st.spinner("Searching the database for relevant information..."):
-                context = search_vectordb(client, query)  # Pass client to the search function
+            # Execute the function call
+            if function_name == "search_vectordb":
+                function_args = json.loads(function_args)
+                query = function_args["query"]
+                
+                with st.spinner("Searching the database for relevant information..."):
+                    context = search_vectordb(query)  # Pass client to the search function
 
-            # Re-generate the LLM response with the new context
-            st.session_state.messages.append({"role": "assistant", "content": context})
-            response = chat_completion_request(st.session_state.messages, tools)
+                # Re-generate the LLM response with the new context
+                st.session_state.messages.append({"role": "assistant", "content": context})
+                response = chat_completion_request(st.session_state.messages)
 
-    # Display the final response
-    st.write(response.choices[0].message.content)
+        # Display the final response
+        if response:
+            st.write(response['choices'][0]['message']['content'])

@@ -25,15 +25,6 @@ def read_webpage_from_url(url):
         st.error(f"Error processing the webpage: {e}")
         return None
 
-# Function to calculate tokens
-def calculate_tokens(messages):
-    """Calculate total tokens for a list of messages."""
-    total_tokens = 0
-    encoding = tiktoken.encoding_for_model('gpt-4o-mini')
-    for msg in messages:
-        total_tokens += len(encoding.encode(msg['content']))
-    return total_tokens
-
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:
@@ -70,6 +61,41 @@ def add_to_collection(collection, text, filename):
         embeddings=[embedding]
     )
     return collection
+
+# OpenAI function calling setup
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_vectordb",
+            "description": "Search the vector database for relevant information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The query to search the vector database."
+                    }
+                },
+                "required": ["query"]
+            },
+        },
+    }
+]
+
+# Function for OpenAI chat completion requests
+def chat_completion_request(messages, tools, tool_choice=None):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+        return response
+    except Exception as e:
+        st.error(f"Unable to generate ChatCompletion response. Error: {e}")
+        return e
 
 def setup_vectordb():
     db_path = "HW4_VectorDB"
@@ -171,16 +197,8 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     messages_for_llm = [context_message] + st.session_state.messages
 
     # Generate response using OpenAI
-    model = "gpt-4o-mini"
-    full_response = ""
+    # full_response = ""
     message_placeholder = st.empty()
-    stream = generate_openai_response(client, messages_for_llm, model)
-    if stream:
-      for chunk in stream:
-        if chunk.choices[0].delta.content is not None:
-          full_response += chunk.choices[0].delta.content
-          message_placeholder.markdown(full_response + "▌")
-      message_placeholder.markdown(full_response)
-
-
-    st.session_state.messages.append({"role": "system", "content": full_response})
+    response = chat_completion_request(messages_for_llm, tools = tools)
+    st.write(response.choices[0].message.content)
+    st.session_state.messages.append({"role": "system", "content": response})

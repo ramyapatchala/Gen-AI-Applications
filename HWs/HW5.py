@@ -4,7 +4,7 @@ import os
 import chromadb
 from bs4 import BeautifulSoup
 from openai import OpenAI
-
+import json
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:

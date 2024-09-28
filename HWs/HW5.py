@@ -165,6 +165,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
             
             # Call search_vectordb only if there is a tool call
             with st.spinner('Retrieving relevant information from the database...'):
+                time.sleep(1) 
                 document = search_vectordb(query)['documents'][0]
             
             msgs = []

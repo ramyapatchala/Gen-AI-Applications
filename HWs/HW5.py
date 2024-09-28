@@ -150,7 +150,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         response = chat_completion_request(msg, tools=tools)
         st.write(response)
         tool_call = response.choices[0].message.tool_calls[0]
-        arguments = json.loads(tool_call['function']['arguments'])
+        arguments = json.loads(tool_call.function.arguments)
         query = arguments.get('query')
         document = search_vectordb(query)['documents'][0]
         msgs = []

@@ -1,39 +1,92 @@
 import streamlit as st
 import openai
 import os
-import chromadb
-import json
-from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import chromadb
+import tiktoken
+from bs4 import BeautifulSoup
+import requests
 
-# Global client variable
-client = None
+# Function to read webpage content from a URL
+def read_webpage_from_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        document = " ".join([p.get_text() for p in soup.find_all("p")])
+        return document
+    except requests.RequestException as e:
+        st.error(f"Error reading webpage from {url}: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Error processing the webpage: {e}")
+        return None
 
-# Verify OpenAI API key
+# Function to calculate tokens
+def calculate_tokens(messages):
+    """Calculate total tokens for a list of messages."""
+    total_tokens = 0
+    encoding = tiktoken.encoding_for_model('gpt-4o-mini')
+    for msg in messages:
+        total_tokens += len(encoding.encode(msg['content']))
+    return total_tokens
+
+# Function to verify OpenAI API key
 def verify_openai_key(api_key):
-    global client
     try:
         client = openai.OpenAI(api_key=api_key)
-        client.models.list()  # Ensure the API key works
-        return True, "API key is valid"
+        client.models.list()
+        return client, True, "API key is valid"
     except Exception as e:
-        return False, str(e)
+        return None, False, str(e)
 
-# Function to set up the VectorDB
+# Function to generate summary using OpenAI
+def generate_openai_response(client, messages, model):
+    try:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
+        return None
+
+# Vector DB functions
+def add_to_collection(collection, text, filename):
+    openai_client = OpenAI(api_key = st.secrets['key1'])
+    response = openai_client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    embedding = response.data[0].embedding
+    collection.add(
+        documents=[text],
+        ids=[filename],
+        embeddings=[embedding]
+    )
+    return collection
+
 def setup_vectordb():
     db_path = "HW4_VectorDB"
     
+    # Check if vector DB exists on disk
     if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")
+        
+        # Initialize the ChromaDB client with persistence
         client = chromadb.PersistentClient(path=db_path)
+        
+        # Create or get the collection
         collection = client.get_or_create_collection(
             name="HW4Collection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
         )
-
+        
         su_orgs_path = os.path.join(os.getcwd(), "HWs/su_orgs/")
         html_files = [f for f in os.listdir(su_orgs_path) if f.endswith('.html')]
         
@@ -42,96 +95,46 @@ def setup_vectordb():
             with open(file_path, 'r', encoding='utf-8') as file:
                 soup = BeautifulSoup(file, 'html.parser')
                 text = soup.get_text(separator=' ', strip=True)
-                add_to_collection(collection, text, html_file)
-
+                collection = add_to_collection(collection, text, html_file)
+        
         st.success(f"VectorDB setup complete with {len(html_files)} HTML files!")
     else:
+        # If it already exists, just load it
         st.info("VectorDB already exists. Loading from disk...")
         client = chromadb.PersistentClient(path=db_path)
         st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
 
-# Function to add documents to the collection
-def add_to_collection(collection, text, filename):
-    try:
-        response = openai.Embedding.create(
-            input=text,
-            model="text-embedding-3-small"
-        )
-        embedding = response['data'][0]['embedding']
-        collection.add(
-            documents=[text],
-            ids=[filename],
-            embeddings=[embedding]
-        )
-    except Exception as e:
-        st.error(f"Error adding to collection: {e}")
 
-# Function to perform vector search in ChromaDB
-def search_vectordb(query):
+def query_vectordb(client, query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        try:
-            response = openai.Embedding.create(
-                input=query,
-                model="text-embedding-3-small"
-            )
-            query_embedding = response['data'][0]['embedding']
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                include=['documents', 'distances', 'metadatas'],
-                n_results=3
-            )
-            return results['documents'][0] if results['documents'] else "No relevant information found."
-        except Exception as e:
-            st.error(f"Error searching in VectorDB: {e}")
-            return "Error during search."
-    else:
-        return "VectorDB not set up."
-
-# OpenAI function calling setup
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "search_vectordb",
-            "description": "Search the vector database for relevant information.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The query to search the vector database."
-                    }
-                },
-                "required": ["query"]
-            },
-        },
-    }
-]
-
-# Function for OpenAI chat completion requests
-def chat_completion_request(messages):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
+        response = client.embeddings.create(
+            input=query,
+            model="text-embedding-3-small"
         )
-        return response
-    except Exception as e:
-        st.error(f"Unable to generate ChatCompletion response. Error: {e}")
+        query_embedding = response.data[0].embedding
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            include=['documents', 'distances', 'metadatas'],
+            n_results=k
+        )
+        return results
+    else:
+        st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None
 
 # Streamlit App
-st.title("HW5 Interactive Course/Club Search Chatbot")
+st.title("Interactive Data Search Chatbot")
 
-# Sidebar: API key verification
+# Sidebar: LLM provider selection
+llm_provider = st.sidebar.selectbox("Choose LLM:", options=["OpenAI GPT-4O"])
+
+# API key verification
 openai_api_key = st.secrets["key1"]
-is_valid, message = verify_openai_key(openai_api_key)
+client, is_valid, message = verify_openai_key(openai_api_key)
 
 if is_valid:
-    st.sidebar.success("OpenAI API key is valid!", icon="✅")
+    st.sidebar.success(f"OpenAI API key is valid!", icon="✅")
 else:
     st.sidebar.error(f"Invalid OpenAI API key: {message}", icon="❌")
     st.stop()
@@ -143,46 +146,41 @@ setup_vectordb()
 if 'messages' not in st.session_state:
     st.session_state['messages'] = []
 
+# Display chat history
+for message in st.session_state.messages:
+    role = "user" if message["role"] == "user" else "system"
+    with st.chat_message(role):
+        st.markdown(message["content"])
+
 # Chat input
-if prompt := st.chat_input("What would you like to know about iSchool student organizations or courses?"):
+if prompt := st.chat_input("What would you like to know about iSchool student organizations?"):
     # Add user message to chat history
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Generate LLM response with function calling
-    response = chat_completion_request(st.session_state.messages)
+    # Query VectorDB for relevant documents
+    results = query_vectordb(client, prompt)
+    if results:
+        context = " ".join([doc for doc in results['documents'][0]])
+        context_message = {"role": "system", "content": f"Relevant information: {context}"}
+    else:
+        context_message = {"role": "system", "content": "No specific context found."}
 
-    if response:
-        st.write("Full response:", response)  # Debug output
+    messages_for_llm = [context_message] + st.session_state.messages
 
-        if response.choices and len(response.choices) > 0:
-            choice = response.choices[0]
-            if choice.finish_reason == "tool_calls":
-                msg = choice.message
-                
-                if 'tool_calls' in msg and 'function' in msg['tool_calls']:
-                    function_args = msg['tool_calls']['function']['arguments']
-                    function_name = msg['tool_calls']['function']['name']
+    # Generate response using OpenAI
+    model = "gpt-4o-mini"
+    full_response = ""
+    message_placeholder = st.empty()
+    stream = generate_openai_response(client, messages_for_llm, model)
+    if stream:
+      for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+          full_response += chunk.choices[0].delta.content
+          message_placeholder.markdown(full_response + "▌")
+      message_placeholder.markdown(full_response)
 
-                    # Execute the function call
-                    if function_name == "search_vectordb":
-                        try:
-                            function_args = json.loads(function_args)
-                            query = function_args["query"]
-                            
-                            with st.spinner("Searching the database for relevant information..."):
-                                context = search_vectordb(query)
 
-                            st.session_state.messages.append({"role": "assistant", "content": context})
-                            response = chat_completion_request(st.session_state.messages)
-                        except json.JSONDecodeError as e:
-                            st.error(f"Error decoding JSON for function arguments: {e}")
-                        except Exception as e:
-                            st.error(f"Error executing function call: {e}")
-                else:
-                    st.error("Function call details are missing in the response.")
-        else:
-            st.error("No choices returned in the response.")
-
-    # Display the final response
-    if response:
-        st.write(response.choices[0].message.content)
+    st.session_state.messages.append({"role": "system", "content": full_response})

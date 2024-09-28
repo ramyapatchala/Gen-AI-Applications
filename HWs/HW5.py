@@ -2,19 +2,16 @@ import streamlit as st
 import openai
 import os
 from PyPDF2 import PdfReader
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
 import tiktoken
 from bs4 import BeautifulSoup
 import requests
-
+from openai import OpenAI
 
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:
-        client = openai.OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key)
         client.models.list()
         return client, True, "API key is valid"
     except Exception as e:
@@ -22,7 +19,7 @@ def verify_openai_key(api_key):
 
 # Vector DB functions
 def add_to_collection(collection, text, filename):
-    openai_client = OpenAI(api_key = st.secrets['key1'])
+    openai_client = OpenAI(api_key=st.secrets['key1'])
     response = openai_client.embeddings.create(
         input=text,
         model="text-embedding-3-small"
@@ -60,13 +57,11 @@ tools = [
 def chat_completion_request(messages, tools, tool_choice=None):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4-turbo-preview",
             messages=messages,
             tools=tools,
             tool_choice="auto",
         )
-        st.write(messages)
-        st.write(response)
         return response
     except Exception as e:
         st.error(f"Unable to generate ChatCompletion response. Error: {e}")
@@ -105,11 +100,11 @@ def setup_vectordb():
         client = chromadb.PersistentClient(path=db_path)
         st.session_state.HW4_vectorDB = client.get_collection(name="HW4Collection")
 
-
-def search_vectordb(client, query, k=3):
+def search_vectordb(query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        response = client.embeddings.create(
+        openai_client = OpenAI(api_key=st.secrets['key1'])
+        response = openai_client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
         )
@@ -128,7 +123,7 @@ def search_vectordb(client, query, k=3):
 st.title("Interactive Data Search Chatbot")
 
 # Sidebar: LLM provider selection
-llm_provider = st.sidebar.selectbox("Choose LLM:", options=["OpenAI GPT-4O"])
+llm_provider = st.sidebar.selectbox("Choose LLM:", options=["OpenAI GPT-4-turbo-preview"])
 
 # API key verification
 openai_api_key = st.secrets["key1"]
@@ -149,7 +144,7 @@ if 'messages' not in st.session_state:
 
 # Display chat history
 for message in st.session_state.messages:
-    role = "user" if message["role"] == "user" else "system"
+    role = "user" if message["role"] == "user" else "assistant"
     with st.chat_message(role):
         st.markdown(message["content"])
 
@@ -162,20 +157,24 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Query VectorDB for relevant documents
-    results = search_vectordb(client, prompt)
+    results = search_vectordb(prompt)
     
     if results:
         context = " ".join([doc for doc in results['documents'][0]])
         context_message = {"role": "system", "content": f"Relevant information: {context}"}
-        st.write('Contect Message: ', context_message)
     else:
         context_message = {"role": "system", "content": "No specific context found."}
 
     messages_for_llm = [context_message] + st.session_state.messages
 
     # Generate response using OpenAI
-    # full_response = ""
     message_placeholder = st.empty()
-    response = chat_completion_request(messages_for_llm, tools = tools)
-    st.write(response.choices[0].message.content)
-    st.session_state.messages.append({"role": "system", "content": response})
+    response = chat_completion_request(messages_for_llm, tools=tools)
+    assistant_response = response.choices[0].message.content
+    
+    # Display assistant response
+    with st.chat_message("assistant"):
+        st.markdown(assistant_response)
+    
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": assistant_response})

@@ -166,10 +166,10 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     
     if results:
         context = " ".join([doc for doc in results['documents'][0]])
-        context_message = {"role": "user", "content": f"Relevant information: {context}"}
+        context_message = {"role": "system", "content": f"Relevant information: {context}"}
         st.write('Contect Message: ', context_message)
     else:
-        context_message = {"role": "user", "content": "No specific context found."}
+        context_message = {"role": "system", "content": "No specific context found."}
 
     messages_for_llm = [context_message] + st.session_state.messages
 

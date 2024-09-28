@@ -152,7 +152,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         response = chat_completion_request(msg, tools=tools)
         
         # Check if a tool was used or not
-        tool_call = response.choices[0].message.get("tool_calls", [])
+        tool_call = response.choices[0].message.tool_calls
         
         if tool_call:
             # If a tool is called, execute the tool and search the vector DB

@@ -51,10 +51,11 @@ tools = [
 ]
 
 # Function for OpenAI chat completion requests
-def chat_completion_request(messages, tools):
+def chat_completion_request(messages, tools, tool_choice = None):
     try:
+        client = OpenAI(api_key = openai_api_key)
         response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-4o",
             messages=messages,
             tools=tools,
             tool_choice="auto",

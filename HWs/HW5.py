@@ -104,11 +104,14 @@ def search_vectordb(query, k=3):
             model="text-embedding-3-small"
         )
         query_embedding = response.data[0].embedding
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            include=['documents', 'distances', 'metadatas'],
-            n_results=k
-        )
+        
+        # Show spinner while retrieving results
+        with st.spinner('Retrieving information from the database...'):
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                include=['documents', 'distances', 'metadatas'],
+                n_results=k
+            )
         return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
@@ -161,7 +164,9 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
             query = arguments.get('query')
             
             # Call search_vectordb only if there is a tool call
-            document = search_vectordb(query)['documents'][0]
+            with st.spinner('Retrieving relevant information from the database...'):
+                document = search_vectordb(query)['documents'][0]
+            
             msgs = []
             msgs.append({"role": "system", "content": f"Relevant information: \n {document}"})
             msgs.append(msg)

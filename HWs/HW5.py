@@ -3,7 +3,7 @@ import openai
 import os
 import chromadb
 import json
-from bs4 import BeautifulSoup  # Make sure to import BeautifulSoup
+from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 __import__('pysqlite3')
 import sys
@@ -152,7 +152,9 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         if function_name == "search_vectordb":
             function_args = json.loads(function_args)
             query = function_args["query"]
-            context = search_vectordb(client, query)  # Pass client to the search function
+            
+            with st.spinner("Searching the database for relevant information..."):
+                context = search_vectordb(client, query)  # Pass client to the search function
 
             # Re-generate the LLM response with the new context
             st.session_state.messages.append({"role": "assistant", "content": context})

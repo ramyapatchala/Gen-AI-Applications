@@ -154,7 +154,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
         query = arguments.get('query')
         document = search_vectordb(query)['documents'][0]
         msgs = []
-        msgs.append({"role":"System", "content":f"Relevant information: \n {document}"})
+        msgs.append({"role":"system", "content":f"Relevant information: \n {document}"})
         msgs.append(msg)
         openai_client = OpenAI(api_key=st.secrets['key1'])
         response = openai_client.chat.completions.create(

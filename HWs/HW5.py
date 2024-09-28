@@ -139,28 +139,23 @@ for message in st.session_state.messages:
 # Chat input
 if prompt := st.chat_input("What would you like to know about iSchool student organizations?"):
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    msg = {"role": "user", "content": prompt}
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    # Query VectorDB for relevant documents
-    results = search_vectordb(prompt)
-    
-    if results:
-        context = " ".join([doc for doc in results['documents'][0]])
-        context_message = {"role": "system", "content": f"Relevant information: {context}"}
-    else:
-        context_message = {"role": "system", "content": "No specific context found."}
-
-    messages_for_llm = [context_message, {"role": "user", "content": prompt}]
-
+    st.session_state.messages.append(msg)    
     # Generate response using OpenAI
     with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        response = chat_completion_request(messages_for_llm, tools=tools)
-        st.write(response)
-        assistant_response = response.choices[0].message.content
-        message_placeholder.markdown(assistant_response)
-    
+        response = chat_completion_request(msg, tools=tools)
+        tool_call = response.choices[0].message.tool_calls[0]
+        arguments = json.loads(tool_call['function']['arguments'])
+        query = arguments.get('query')
+        document = search_vectordb(query)['documents'][0]
+        msgs = []
+        msgs.append({"role":"System", "content":f"Relevant information: \n {document}"})
+        msgs.append(msg)
+        response = openai.chat.completions.create(
+                    model='gpt-4o',
+                    messages= msgs
+                )
     # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+    st.session_state.messages.append({"role": "assistant", "content": response})

@@ -150,28 +150,39 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
 
     # Generate LLM response with function calling
     response = chat_completion_request(st.session_state.messages)
-    
+
     if response:
-        st.write(response)
+        st.write("Full response:", response)  # Debug output
 
-        if response.choices[0].finish_reason == "tool_calls":
-            # The LLM decided to call the `search_vectordb` function
-            msg = response.choices[0].message
-            function_args = msg['tool_calls']['function']['arguments']
-            function_name = msg['tool_calls']['function']['name']
-
-            # Execute the function call
-            if function_name == "search_vectordb":
-                function_args = json.loads(function_args)
-                query = function_args["query"]
+        if response.choices and len(response.choices) > 0:
+            choice = response.choices[0]
+            if choice.finish_reason == "tool_calls":
+                msg = choice.message
                 
-                with st.spinner("Searching the database for relevant information..."):
-                    context = search_vectordb(query)  # Pass client to the search function
+                if 'tool_calls' in msg and 'function' in msg['tool_calls']:
+                    function_args = msg['tool_calls']['function']['arguments']
+                    function_name = msg['tool_calls']['function']['name']
 
-                # Re-generate the LLM response with the new context
-                st.session_state.messages.append({"role": "assistant", "content": context})
-                response = chat_completion_request(st.session_state.messages)
+                    # Execute the function call
+                    if function_name == "search_vectordb":
+                        try:
+                            function_args = json.loads(function_args)
+                            query = function_args["query"]
+                            
+                            with st.spinner("Searching the database for relevant information..."):
+                                context = search_vectordb(query)
 
-        # Display the final response
-        if response:
-            st.write(response.choices[0].message.content)
+                            st.session_state.messages.append({"role": "assistant", "content": context})
+                            response = chat_completion_request(st.session_state.messages)
+                        except json.JSONDecodeError as e:
+                            st.error(f"Error decoding JSON for function arguments: {e}")
+                        except Exception as e:
+                            st.error(f"Error executing function call: {e}")
+                else:
+                    st.error("Function call details are missing in the response.")
+        else:
+            st.error("No choices returned in the response.")
+
+    # Display the final response
+    if response:
+        st.write(response.choices[0].message.content)

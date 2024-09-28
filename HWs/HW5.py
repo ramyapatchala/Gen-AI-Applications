@@ -154,9 +154,9 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     if response:
         st.write(response)
 
-        if response['choices'][0]['finish_reason'] == "function_call":
+        if response.choices[0].finish_reason == "function_call":
             # The LLM decided to call the `search_vectordb` function
-            msg = response['choices'][0]['message']
+            msg = response.choices[0].message
             function_args = msg['function_call']['arguments']
             function_name = msg['function_call']['name']
 
@@ -174,4 +174,4 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
 
         # Display the final response
         if response:
-            st.write(response['choices'][0]['message']['content'])
+            st.write(response.choices[0].message.content)

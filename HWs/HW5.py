@@ -55,12 +55,12 @@ tools = [
 # Function for OpenAI chat completion requests
 def chat_completion_request(message, tools, tool_choice=None):
     try:
-        messages = []
-        messages.append(message)
+        # messages = []
+        # messages.append(message)
         client = OpenAI(api_key=openai_api_key)
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=messages,
+            messages=message,
             tools=tools,
             tool_choice="auto",
         )
@@ -153,7 +153,7 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
     
     # Generate response using OpenAI
     with st.chat_message("assistant"):
-        response = chat_completion_request(msg, tools=tools)
+        response = chat_completion_request(st.session_state.messages, tools=tools)
         
         # Check if a tool was used or not
         tool_call = response.choices[0].message.tool_calls

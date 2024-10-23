@@ -70,7 +70,7 @@ def sort_results_by_date(results):
     combined_results = []
     for doc, url, meta in zip(documents, urls, metadatas):
         date_str = meta['date']
-        date_obj = datetime.fromisoformat(date_str[:-1])  # Convert to datetime object (removing 'Z')
+        date_obj = datetime.fromisoformat(date_str)  # Convert to datetime object (removing 'Z')
         combined_results.append((date_obj, doc, url))
     
     # Sort by date (latest first)

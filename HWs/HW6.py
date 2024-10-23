@@ -2,14 +2,12 @@ import streamlit as st
 from openai import OpenAI
 import os
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
 import json
-import time
+import sys
+
+# Replace pysqlite3 with sqlite3
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
@@ -21,8 +19,8 @@ def verify_openai_key(api_key):
         return None, False, str(e)
 
 # Vector DB functions
-def add_to_collection(collection, text, filename):
-    openai_client = OpenAI(api_key = st.secrets['key1'])
+def add_to_collection(collection, text, url):
+    openai_client = OpenAI(api_key=st.secrets['key1'])
     response = openai_client.embeddings.create(
         input=text,
         model="text-embedding-3-small"
@@ -30,7 +28,7 @@ def add_to_collection(collection, text, filename):
     embedding = response['data'][0]['embedding']
     collection.add(
         documents=[text],
-        ids=[filename],
+        ids=[url],  # Store URL as the ID
         embeddings=[embedding]
     )
     return collection
@@ -38,7 +36,7 @@ def add_to_collection(collection, text, filename):
 def setup_vectordb():
     db_path = "News_Bot_VectorDB"
     
-    if os.path.exists(db_path):
+    if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")
         client = chromadb.PersistentClient(path=db_path)
         collection = client.get_or_create_collection(
@@ -48,16 +46,11 @@ def setup_vectordb():
         
         # Load the CSV file containing news URLs
         news_df = pd.read_csv("HWs/Example_news_info_for_testing.csv")
-        for index, url in enumerate(urls):
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  # Check if the request was successful
-            soup = BeautifulSoup(response.content, 'html.parser')
-            content = soup.find_all('p')
-            text = ' '.join(paragraph.get_text() for paragraph in content)
-            # Add to your vector database here
-        except requests.exceptions.RequestException as e:
-            print(f"Could not fetch content from {url}: {e}")
+        for _, row in news_df.iterrows():
+            text = row['Document']
+            url = row['URL']
+            add_to_collection(collection, text, url)  # Add document and URL to the collection
+        
         st.success(f"VectorDB setup complete with {len(news_df)} news articles!")
     else:
         st.info("VectorDB already exists. Loading from disk...")
@@ -67,7 +60,7 @@ def setup_vectordb():
 def search_vectordb(query, k=3):
     if 'NewsBot_vectorDB' in st.session_state:
         collection = st.session_state.News_Bot_vectorDB
-        openai_client = OpenAI(api_key = st.secrets['key1'])
+        openai_client = OpenAI(api_key=st.secrets['key1'])
         response = openai_client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
@@ -75,7 +68,7 @@ def search_vectordb(query, k=3):
         query_embedding = response.data[0].embedding
         results = collection.query(
             query_embeddings=[query_embedding],
-            include=['documents', 'distances', 'metadatas'],
+            include=['documents', 'metadatas'],  # Exclude distances for simplicity
             n_results=k
         )
         return results
@@ -91,7 +84,7 @@ openai_api_key = st.secrets["key1"]
 client, is_valid, message = verify_openai_key(openai_api_key)
 
 if is_valid:
-    st.sidebar.success(f"OpenAI API key is valid!", icon="✅")
+    st.sidebar.success("OpenAI API key is valid!", icon="✅")
 else:
     st.sidebar.error(f"Invalid OpenAI API key: {message}", icon="❌")
     st.stop()
@@ -121,13 +114,13 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         
         if "interesting" in prompt.lower():
             results = search_vectordb("most interesting news")
-            documents = results['documents']
-            response_content = "Here are the most interesting news articles:\n" + "\n".join(documents)
+            urls = results['metadatas']  # Extract URLs from the results
+            response_content = "Here are the most interesting news articles:\n" + "\n".join(urls)
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
-            context = " ".join([doc for doc in results['documents']])
-            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(context)
+            urls = results['metadatas']  # Extract URLs from the results
+            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(urls)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."
 

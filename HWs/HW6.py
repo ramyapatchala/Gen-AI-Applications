@@ -100,7 +100,7 @@ def search_vectordb(topic):
         collection = st.session_state.News_Bot_VectorDB
         results = collection.query(
             query_embeddings=[embedding],
-            include=['documents', 'metadatas', 'ids'],
+            include=['documents', 'metadatas'],
             n_results=3  # Adjust this number as needed
         )
         return results

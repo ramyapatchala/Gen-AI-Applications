@@ -54,14 +54,16 @@ def setup_vectordb():
             try:
                 st.write(url)
                 response = requests.get(url)
+                response.raise_for_status()  # Check if the request was successful
                 soup = BeautifulSoup(response.content, 'html.parser')
                 content = soup.find_all('p')  # Assuming the article is in <p> tags
                 text = ""
                 for paragraph in content:
                     text += paragraph.get_text()  # Concatenating the text
                 collection = add_to_collection(collection, text, str(index))
-            except Exception as e:
+            except requests.exceptions.RequestException as e:
                 st.warning(f"Could not fetch content from {url}: {e}")
+
         
         st.success(f"VectorDB setup complete with {len(news_df)} news articles!")
     else:

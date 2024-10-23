@@ -35,7 +35,7 @@ def add_to_collection(collection, text, filename):
     return collection
 
 def setup_vectordb():
-    db_path = "News_VectorDB"
+    db_path = "NewsBot_VectorDB"
     
     if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")

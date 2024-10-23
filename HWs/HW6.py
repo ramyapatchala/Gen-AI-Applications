@@ -38,7 +38,7 @@ def add_to_collection(collection, text, url, date):
 def setup_vectordb():
     db_path = "News_Bot_VectorDB"
     
-    if os.path.exists(db_path):
+    if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")
         client = chromadb.PersistentClient(path=db_path)
         collection = client.get_or_create_collection(

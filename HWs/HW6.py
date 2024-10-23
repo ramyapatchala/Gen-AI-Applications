@@ -71,7 +71,7 @@ def find_most_interesting_news():
             model="text-embedding-3-small"
         )
         keyword_embeddings.append(response.data[0].embedding)
-
+    combined_embedding = [sum(x) / len(x) for x in zip(*keyword_embeddings)]
 
     if 'News_Bot_VectorDB' in st.session_state:
         collection = st.session_state.News_Bot_VectorDB

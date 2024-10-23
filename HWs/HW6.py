@@ -14,7 +14,7 @@ import time
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:
-        client = openai.OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key)
         client.models.list()
         return client, True, "API key is valid"
     except Exception as e:

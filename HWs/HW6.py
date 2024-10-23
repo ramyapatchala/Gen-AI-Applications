@@ -36,13 +36,13 @@ def add_to_collection(collection, text, filename):
     return collection
 
 def setup_vectordb():
-    db_path = "NewsBot_VectorDB"
+    db_path = "News_Bot_VectorDB"
     
     if not os.path.exists(db_path):
         st.info("Setting up vector DB for the first time...")
         client = chromadb.PersistentClient(path=db_path)
         collection = client.get_or_create_collection(
-            name="NewsCollection",
+            name="NewsBotCollection",
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
         )
         
@@ -65,11 +65,11 @@ def setup_vectordb():
     else:
         st.info("VectorDB already exists. Loading from disk...")
         client = chromadb.PersistentClient(path=db_path)
-        st.session_state.NewsBot_vectorDB = client.get_collection(name="NewsCollection")
+        st.session_state.News_Bot_vectorDB = client.get_collection(name="NewsBotCollection")
 
 def search_vectordb(query, k=3):
     if 'NewsBot_vectorDB' in st.session_state:
-        collection = st.session_state.NewsBot_vectorDB
+        collection = st.session_state.News_Bot_vectorDB
         openai_client = OpenAI(api_key = st.secrets['key1'])
         response = openai_client.embeddings.create(
             input=query,

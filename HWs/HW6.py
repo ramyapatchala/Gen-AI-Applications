@@ -65,7 +65,6 @@ def sort_results_by_date(results):
     documents = results['documents'][0]
     urls = results['ids'][0]
     metadatas = results['metadatas'][0]
-    st.write(metadatas)
     # Combine the documents, urls, and dates
     combined_results = []
     for doc, url, meta in zip(documents, urls, metadatas):

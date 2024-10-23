@@ -147,7 +147,7 @@ if option == "Interesting News":
     if results:
         sorted_results = sort_results_by_date(results)
         formatted_results = [
-                    f"{i + 1}. {document[:200]}... (Published on {date}) - [Link]({url})"
+                    f"{i + 1}. {document}... (Published on {date}) - [Link]({url})"
                     for i, (date, document, url) in enumerate(sorted_results)
         ]
         response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
@@ -164,7 +164,7 @@ elif option == "Find News About a Topic":
             if results:
                 sorted_results = sort_results_by_date(results)
                 formatted_results = [
-                    f"{i + 1}. {document[:200]}... (Published on {date}) - [Link]({url})"
+                    f"{i + 1}. {document}... (Published on {date}) - [Link]({url})"
                     for i, (date, document, url) in enumerate(sorted_results)
                 ]
                 response_content = "Here are the news articles:\n" + "\n".join(formatted_results)

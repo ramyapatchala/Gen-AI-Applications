@@ -56,11 +56,11 @@ def setup_vectordb():
     else:
         st.info("VectorDB already exists. Loading from disk...")
         client = chromadb.PersistentClient(path=db_path)
-        st.session_state.News_Bot_vectorDB = client.get_collection(name="NewsBotCollection")
+        st.session_state.News_Bot_VectorDB = client.get_collection(name="NewsBotCollection")
 
 def search_vectordb(query, k=3):
     if 'News_Bot_VectorDB' in st.session_state:
-        collection = st.session_state.News_Bot_vectorDB
+        collection = st.session_state.News_Bot_VectorDB
         openai_client = OpenAI(api_key=st.secrets['key1'])
         response = openai_client.embeddings.create(
             input=query,

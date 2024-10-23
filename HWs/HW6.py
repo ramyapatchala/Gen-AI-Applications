@@ -49,12 +49,14 @@ def setup_vectordb():
         # Load the CSV file containing news URLs
         news_df = pd.read_csv("Example_news_info_for_testing.csv")
         for index, row in news_df.iterrows():
-            url = row['url']
+            url = row['URL']  # Ensure you use the correct column name
             # Get content from the URL
             try:
+                st.write(url)
                 response = requests.get(url)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 text = soup.get_text(separator=' ', strip=True)
+                # Add the webpage content to the collection
                 collection = add_to_collection(collection, text, str(index))
             except Exception as e:
                 st.warning(f"Could not fetch content from {url}: {e}")
@@ -118,7 +120,7 @@ if prompt := st.chat_input("What would you like to know about the news?"):
     
     # Generate response using OpenAI
     with st.chat_message("assistant"):
-        response = None
+        response_content = None
         
         if "interesting" in prompt.lower():
             results = search_vectordb("most interesting news")
@@ -127,8 +129,7 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
-            # documents = results['documents']
-            context = " ".join([doc for doc in results['documents'][0]])
+            context = " ".join([doc for doc in results['documents']])
             response_content = f"Here are news articles about '{topic}':\n" + "\n".join(context)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."

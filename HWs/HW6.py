@@ -8,6 +8,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):

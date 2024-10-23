@@ -54,13 +54,12 @@ def setup_vectordb():
             try:
                 st.write(url)
                 response = requests.get(url)
-                #soup = BeautifulSoup(response.content, 'html.parser')
-                #text = soup.get_text(separator=' ', strip=True)
-                with open(url, 'r', encoding='utf-8') as file:
-                    soup = BeautifulSoup(file, 'html.parser')
-                    text = soup.get_text(separator=' ', strip=True)                
-                    # Add the webpage content to the collection
-                    collection = add_to_collection(collection, text, str(index))
+                soup = BeautifulSoup(response.content, 'html.parser')
+                content = soup.find_all('p')  # Assuming the article is in <p> tags
+                text = ""
+                for paragraph in content:
+                    text += paragraph.get_text()  # Concatenating the text
+                collection = add_to_collection(collection, text, str(index))
             except Exception as e:
                 st.warning(f"Could not fetch content from {url}: {e}")
         

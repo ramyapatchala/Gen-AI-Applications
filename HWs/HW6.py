@@ -120,6 +120,7 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
+            st.write(results)
             urls = results['metadatas']  # Extract URLs from the results
             response_content = f"Here are news articles about '{topic}':\n" + "\n".join(urls)
         else:

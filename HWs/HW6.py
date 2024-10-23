@@ -124,17 +124,16 @@ if prompt := st.chat_input("What would you like to know about the news?"):
     # Generate response using OpenAI
     with st.chat_message("assistant"):
         response_content = None
-        
         if "interesting" in prompt.lower():
-            interesting_news = find_most_interesting_news()
-            if interesting_news:
-                formatted_results = [
-                    f"{i + 1}. {doc} (Published on {date}) - [Link]({url})"
-                    for i, (date, doc, url) in enumerate(interesting_news)
-                ]
-                response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
-            else:
-                response_content = "No interesting news articles found."
+            results = find_most_interesting_news()
+            documents = results["documents"][0]
+            metadatas = results["metadatas"][0]
+            ids = results["ids"][0]
+            formatted_results = []
+            for i, (doc, metadata, url) in enumerate(zip(documents, metadatas, ids)):
+                date = metadata.get('date', 'Unknown Date')
+                formatted_results.append(f"{i + 1}. {doc[:200]}... (Published on {date}) - [Link]({url})")
+            response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)

@@ -128,8 +128,8 @@ if prompt := st.chat_input("What would you like to know about the news?"):
                 formatted_results.append(f"{i + 1}. {document} To be continued ({url})")
             
             # Joining the formatted results into a single string
-            output = "\n".join(formatted_results)
-            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(output)
+            #output = "\n".join(formatted_results)
+            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(formatted_results)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."
 

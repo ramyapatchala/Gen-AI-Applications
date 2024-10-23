@@ -127,8 +127,9 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
-            documents = results['documents']
-            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(documents)
+            # documents = results['documents']
+            context = " ".join([doc for doc in results['documents'][0]])
+            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(context)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."
 

@@ -9,10 +9,6 @@ import chromadb
 import requests
 from bs4 import BeautifulSoup
 
-
-# Replace pysqlite3 with sqlite3
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):
     try:

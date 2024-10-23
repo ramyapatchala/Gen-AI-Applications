@@ -59,7 +59,7 @@ def setup_vectordb():
         st.session_state.News_Bot_vectorDB = client.get_collection(name="NewsBotCollection")
 
 def search_vectordb(query, k=3):
-    if 'NewsBot_vectorDB' in st.session_state:
+    if 'News_Bot_VectorDB' in st.session_state:
         collection = st.session_state.News_Bot_vectorDB
         openai_client = OpenAI(api_key=st.secrets['key1'])
         response = openai_client.embeddings.create(

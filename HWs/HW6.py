@@ -2,6 +2,9 @@ import streamlit as st
 from openai import OpenAI
 import os
 import pandas as pd
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
 import json
 import sys

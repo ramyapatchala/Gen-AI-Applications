@@ -60,7 +60,8 @@ def setup_vectordb():
         st.session_state.News_Bot_VectorDB = client.get_collection(name="NewsBotCollection")
 
 def find_most_interesting_news():
-    keywords = ["legal", "lawsuit", "regulation", "merger", "acquisition", "court", "law", "contract"]
+    keywords = ["legal", "lawsuit", "regulation", "merger", "acquisition", "court", "law", "contract", "legal precedent", "jurisdiction", "statutory", "litigation",
+    "regulatory compliance", "intellectual property", "antitrust",]
 
     # Generate embeddings for keywords
     openai_client = OpenAI(api_key=st.secrets['key1'])
@@ -144,9 +145,10 @@ if option == "Interesting News":
     st.subheader("Fetching the most interesting news articles...")
     results = find_most_interesting_news()
     if results:
-        documents = results["documents"][0]
-        metadatas = results["metadatas"][0]
-        ids = results["ids"][0]
+        sorted_results = sort_results_by_date(results)
+        documents = sorted_results["documents"][0]
+        metadatas = sorted_results["metadatas"][0]
+        ids = sorted_results["ids"][0]
         formatted_results = []
         for i, (doc, metadata, url) in enumerate(zip(documents, metadatas, ids)):
             date = metadata.get('date', 'Unknown Date')
@@ -174,46 +176,3 @@ elif option == "Find News About a Topic":
                 st.error(f"No news articles found for the topic: {topic}")
         else:
             st.error("Please enter a valid topic.")
-
-# Display chat history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Chat input
-if prompt := st.chat_input("What would you like to know about the news?"):
-    msg = {"role": "user", "content": prompt}
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    st.session_state.messages.append(msg)
-    
-    # Generate response using OpenAI
-    with st.chat_message("assistant"):
-        response_content = None
-        if "interesting" in prompt.lower():
-            results = find_most_interesting_news()
-            documents = results["documents"][0]
-            metadatas = results["metadatas"][0]
-            ids = results["ids"][0]
-            formatted_results = []
-            for i, (doc, metadata, url) in enumerate(zip(documents, metadatas, ids)):
-                date = metadata.get('date', 'Unknown Date')
-                formatted_results.append(f"{i + 1}. {doc[:200]}... (Published on {date}) - [Link]({url})")
-            response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
-        elif "find news about" in prompt.lower():
-            topic = prompt.lower().split("find news about")[-1].strip()
-            results = search_vectordb(topic)
-            sorted_results = sort_results_by_date(results)
-
-            formatted_results = [
-                f"{i + 1}. {document[:200]} (Published on {date}) - [Link]({url})"
-                for i, (date, document, url) in enumerate(sorted_results)
-            ]
-            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(formatted_results)
-        else:
-            response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."
-
-        st.markdown(response_content)
-    
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response_content})

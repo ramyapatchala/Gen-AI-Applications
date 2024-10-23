@@ -120,9 +120,16 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
-            st.write(results)
-            urls = results['metadatas']  # Extract URLs from the results
-            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(urls)
+            #st.write(results)
+            #urls = results['metadatas']  # Extract URLs from the results
+            formatted_results = []
+            for i, document in enumerate(results['documents'][0]):
+                url = results['ids'][0][i]
+                formatted_results.append(f"{i + 1}. {document} To be continued ({url})")
+            
+            # Joining the formatted results into a single string
+            output = "\n".join(formatted_results)
+            response_content = f"Here are news articles about '{topic}':\n" + "\n".join(output)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."
 

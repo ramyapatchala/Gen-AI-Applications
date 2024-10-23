@@ -9,6 +9,7 @@ import chromadb
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+from datetime import datetime
 
 # Function to verify OpenAI API key
 def verify_openai_key(api_key):

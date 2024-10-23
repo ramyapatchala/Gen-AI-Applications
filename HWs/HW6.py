@@ -80,19 +80,10 @@ def find_most_interesting_news():
         results = collection.query(
             query_embeddings=[combined_embedding],
             include=['documents', 'metadatas'],
-            n_results=100  # Adjust this number as needed
+            n_results=3  # Adjust this number as needed
         )
         st.write(results)
-        interesting_articles = []
-        for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
-            date_str = meta['date']
-            interesting_score = calculate_keyword_frequency(doc, keywords)
-            interesting_articles.append((date_str, doc, meta['id'], interesting_score))
-        
-        # Sort by the interesting score
-        interesting_articles.sort(key=lambda x: x[3], reverse=True)
-        
-        return interesting_articles[:3]  # Return top 3 most interesting articles
+        return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None

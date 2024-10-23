@@ -87,6 +87,35 @@ def find_most_interesting_news():
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None
 
+def search_vectordb(topic):
+    # Search functionality using topic keywords
+    openai_client = OpenAI(api_key=st.secrets['key1'])
+    response = openai_client.embeddings.create(
+        input=topic,
+        model="text-embedding-3-small"
+    )
+    embedding = response.data[0].embedding
+
+    if 'News_Bot_VectorDB' in st.session_state:
+        collection = st.session_state.News_Bot_VectorDB
+        results = collection.query(
+            query_embeddings=[embedding],
+            include=['documents', 'metadatas', 'ids'],
+            n_results=3  # Adjust this number as needed
+        )
+        return results
+    else:
+        st.error("VectorDB not set up. Please set up the VectorDB first.")
+        return None
+
+def sort_results_by_date(results):
+    # Sorting function for search results by date
+    data = []
+    for doc, metadata, url in zip(results["documents"][0], results["metadatas"][0], results["ids"][0]):
+        date = metadata.get('date', 'Unknown Date')
+        data.append((date, doc, url))
+    return sorted(data, key=lambda x: x[0], reverse=True)
+
 # Streamlit App
 st.title("News Reporting Bot")
 
@@ -106,6 +135,45 @@ setup_vectordb()
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state['messages'] = []
+
+# Functionality buttons
+option = st.selectbox("Choose an option", ["Select an option", "Interesting News", "Find News About a Topic"])
+
+# Handle each option based on user selection
+if option == "Interesting News":
+    st.subheader("Fetching the most interesting news articles...")
+    results = find_most_interesting_news()
+    if results:
+        documents = results["documents"][0]
+        metadatas = results["metadatas"][0]
+        ids = results["ids"][0]
+        formatted_results = []
+        for i, (doc, metadata, url) in enumerate(zip(documents, metadatas, ids)):
+            date = metadata.get('date', 'Unknown Date')
+            formatted_results.append(f"{i + 1}. {doc[:200]}... (Published on {date}) - [Link]({url})")
+        response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
+        st.markdown(response_content)
+    else:
+        st.error("No interesting news found.")
+
+elif option == "Find News About a Topic":
+    topic = st.text_input("Enter a topic to find news about:")
+    if st.button("Search"):
+        if topic:
+            st.subheader(f"Searching for news articles about '{topic}'...")
+            results = search_vectordb(topic)
+            if results:
+                sorted_results = sort_results_by_date(results)
+                formatted_results = [
+                    f"{i + 1}. {document[:200]}... (Published on {date}) - [Link]({url})"
+                    for i, (date, document, url) in enumerate(sorted_results)
+                ]
+                response_content = "Here are the news articles:\n" + "\n".join(formatted_results)
+                st.markdown(response_content)
+            else:
+                st.error(f"No news articles found for the topic: {topic}")
+        else:
+            st.error("Please enter a valid topic.")
 
 # Display chat history
 for message in st.session_state.messages:
@@ -138,7 +206,7 @@ if prompt := st.chat_input("What would you like to know about the news?"):
             sorted_results = sort_results_by_date(results)
 
             formatted_results = [
-                f"{i + 1}. {document} (Published on {date}) - [Link]({url})"
+                f"{i + 1}. {document[:200]} (Published on {date}) - [Link]({url})"
                 for i, (date, document, url) in enumerate(sorted_results)
             ]
             response_content = f"Here are news articles about '{topic}':\n" + "\n".join(formatted_results)

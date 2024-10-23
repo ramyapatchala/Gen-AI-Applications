@@ -90,7 +90,7 @@ def search_vectordb(query, k=3):
             include=['documents', 'metadatas'],  # Exclude distances for simplicity
             n_results=k
         )
-        return sorted_results
+        return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None

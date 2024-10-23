@@ -82,7 +82,6 @@ def find_most_interesting_news():
             include=['documents', 'metadatas'],
             n_results=3  # Adjust this number as needed
         )
-        st.write(results)
         return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
@@ -129,7 +128,7 @@ if prompt := st.chat_input("What would you like to know about the news?"):
             if interesting_news:
                 formatted_results = [
                     f"{i + 1}. {doc} (Published on {date}) - [Link]({url})"
-                    for i, (date, doc, url, _) in enumerate(interesting_news)
+                    for i, (date, doc, url) in enumerate(interesting_news)
                 ]
                 response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
             else:

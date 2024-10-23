@@ -14,13 +14,6 @@ def verify_openai_key(api_key):
     except Exception as e:
         return None, False, str(e)
 
-# Function to calculate recency score
-def calculate_recency_score(date_str):
-    article_date = datetime.fromisoformat(date_str)  # Assuming date is in ISO format
-    today = datetime.today()
-    delta_days = (today - article_date).days
-    return max(0, 1 / (delta_days + 1))  # The more recent, the higher the score
-
 # Function to calculate keyword frequency
 def calculate_keyword_frequency(document, keywords):
     return sum(document.lower().count(kw) for kw in keywords)
@@ -79,8 +72,6 @@ def find_most_interesting_news():
         )
         keyword_embeddings.append(response.data[0].embedding)
 
-    # Combine keyword embeddings into a single embedding (mean of all keywords)
-    combined_embedding = [sum(x) / len(x) for x in zip(*keyword_embeddings)]
 
     if 'News_Bot_VectorDB' in st.session_state:
         collection = st.session_state.News_Bot_VectorDB
@@ -95,10 +86,7 @@ def find_most_interesting_news():
         interesting_articles = []
         for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
             date_str = meta['date']
-            keyword_frequency = calculate_keyword_frequency(doc, keywords)
-            recency_score = calculate_recency_score(date_str)
-            interesting_score = keyword_frequency * 0.7 + recency_score * 0.3  # Weighted score
-            
+            interesting_score = calculate_keyword_frequency(doc, keywords)
             interesting_articles.append((date_str, doc, meta['id'], interesting_score))
         
         # Sort by the interesting score

@@ -26,7 +26,7 @@ def add_to_collection(collection, text, url):
         input=text,
         model="text-embedding-3-small"
     )
-    embedding = response['data'][0]['embedding']
+    embedding = response.data[0].embedding
     collection.add(
         documents=[text],
         ids=[url],  # Store URL as the ID

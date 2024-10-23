@@ -14,10 +14,6 @@ def verify_openai_key(api_key):
     except Exception as e:
         return None, False, str(e)
 
-# Function to calculate keyword frequency
-def calculate_keyword_frequency(document, keywords):
-    return sum(document.lower().count(kw) for kw in keywords)
-
 # Vector DB functions
 def add_to_collection(collection, text, url, date):
     openai_client = OpenAI(api_key=st.secrets['key1'])

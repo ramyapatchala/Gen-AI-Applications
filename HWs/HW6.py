@@ -20,7 +20,7 @@ def verify_openai_key(api_key):
         return None, False, str(e)
 
 # Vector DB functions
-def add_to_collection(collection, text, url):
+def add_to_collection(collection, text, url, date):
     openai_client = OpenAI(api_key=st.secrets['key1'])
     response = openai_client.embeddings.create(
         input=text,

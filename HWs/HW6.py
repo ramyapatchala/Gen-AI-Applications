@@ -60,6 +60,22 @@ def setup_vectordb():
         client = chromadb.PersistentClient(path=db_path)
         st.session_state.News_Bot_VectorDB = client.get_collection(name="NewsBotCollection")
 
+def sort_results_by_date(results):
+    documents = results['documents'][0]
+    urls = results['ids'][0]
+    metadatas = results['metadatas'][0]
+
+    # Combine the documents, urls, and dates
+    combined_results = []
+    for doc, url, meta in zip(documents, urls, metadatas):
+        date_str = meta['date']
+        date_obj = datetime.fromisoformat(date_str[:-1])  # Convert to datetime object (removing 'Z')
+        combined_results.append((date_obj, doc, url))
+    
+    # Sort by date (latest first)
+    sorted_results = sorted(combined_results, key=lambda x: x[0], reverse=True)
+    return sorted_results
+
 def search_vectordb(query, k=3):
     if 'News_Bot_VectorDB' in st.session_state:
         collection = st.session_state.News_Bot_VectorDB
@@ -73,12 +89,6 @@ def search_vectordb(query, k=3):
             query_embeddings=[query_embedding],
             include=['documents', 'metadatas'],  # Exclude distances for simplicity
             n_results=k
-        )
-        st.write(results)
-        sorted_results = sorted(
-            zip(results['documents'][0], results['metadatas'], results['ids'][0]), 
-            key=lambda x: (x[1]['date'], x[0]),  # Sort first by date, then by document relevance
-            reverse=True  # Sort in descending order
         )
         return sorted_results
     else:
@@ -130,13 +140,13 @@ if prompt := st.chat_input("What would you like to know about the news?"):
             results = search_vectordb(topic)
             #st.write(results)
             #urls = results['metadatas']  # Extract URLs from the results
+
+            sorted_results = sort_results_by_date(results)
+    
+            # Format the sorted results for response
             formatted_results = []
-            for i, document in enumerate(results['documents'][0]):
-                url = results['ids'][0][i]
-                formatted_results.append(f"{i + 1}. {document} To be continued ({url})")
-            
-            # Joining the formatted results into a single string
-            #output = "\n".join(formatted_results)
+            for i, (date, document, url) in enumerate(sorted_results):
+                formatted_results.append(f"{i + 1}. {document} (Published on {date.strftime('%Y-%m-%d %H:%M:%S')}) - [Link]({url})")            
             response_content = f"Here are news articles about '{topic}':\n" + "\n".join(formatted_results)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."

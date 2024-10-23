@@ -82,7 +82,7 @@ def find_most_interesting_news():
             include=['documents', 'metadatas'],
             n_results=100  # Adjust this number as needed
         )
-        
+        st.write(results)
         interesting_articles = []
         for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
             date_str = meta['date']

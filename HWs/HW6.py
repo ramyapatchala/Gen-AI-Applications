@@ -30,7 +30,8 @@ def add_to_collection(collection, text, url):
     collection.add(
         documents=[text],
         ids=[url],  # Store URL as the ID
-        embeddings=[embedding]
+        embeddings=[embedding],
+        metadatas=[{"date": date}]
     )
     return collection
 
@@ -50,7 +51,8 @@ def setup_vectordb():
         for _, row in news_df.iterrows():
             text = row['Document']
             url = row['URL']
-            add_to_collection(collection, text, url)  # Add document and URL to the collection
+            date = row['Date'] 
+            add_to_collection(collection, text, url, date)  # Add document and URL to the collection
         
         st.success(f"VectorDB setup complete with {len(news_df)} news articles!")
     else:
@@ -72,7 +74,13 @@ def search_vectordb(query, k=3):
             include=['documents', 'metadatas'],  # Exclude distances for simplicity
             n_results=k
         )
-        return results
+
+        sorted_results = sorted(
+            zip(results['documents'][0], results['metadatas'], results['ids'][0]), 
+            key=lambda x: (x[1]['date'], x[0]),  # Sort first by date, then by document relevance
+            reverse=True  # Sort in descending order
+        )
+        return sorted_results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None

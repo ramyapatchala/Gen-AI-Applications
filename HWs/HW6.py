@@ -1,13 +1,14 @@
 import streamlit as st
 from openai import OpenAI
 import os
-import pandas as pd
+from PyPDF2 import PdfReader
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
-import json
-import sys
+import requests
+from bs4 import BeautifulSoup
+
 
 # Replace pysqlite3 with sqlite3
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')

@@ -46,7 +46,7 @@ def setup_vectordb():
         )
         
         # Load the CSV file containing news URLs
-        news_df = pd.read_csv("path_to_your_news.csv")
+        news_df = pd.read_csv("Example_news_info_for_testing.csv")
         for index, row in news_df.iterrows():
             url = row['url']
             # Get content from the URL

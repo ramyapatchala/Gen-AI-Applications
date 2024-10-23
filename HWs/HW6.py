@@ -1,13 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import os
-from PyPDF2 import PdfReader
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime
 
@@ -19,6 +13,17 @@ def verify_openai_key(api_key):
         return client, True, "API key is valid"
     except Exception as e:
         return None, False, str(e)
+
+# Function to calculate recency score
+def calculate_recency_score(date_str):
+    article_date = datetime.fromisoformat(date_str)  # Assuming date is in ISO format
+    today = datetime.today()
+    delta_days = (today - article_date).days
+    return max(0, 1 / (delta_days + 1))  # The more recent, the higher the score
+
+# Function to calculate keyword frequency
+def calculate_keyword_frequency(document, keywords):
+    return sum(document.lower().count(kw) for kw in keywords)
 
 # Vector DB functions
 def add_to_collection(collection, text, url, date):
@@ -61,36 +66,45 @@ def setup_vectordb():
         client = chromadb.PersistentClient(path=db_path)
         st.session_state.News_Bot_VectorDB = client.get_collection(name="NewsBotCollection")
 
-def sort_results_by_date(results):
-    documents = results['documents'][0]
-    urls = results['ids'][0]
-    metadatas = results['metadatas'][0]
-    # Combine the documents, urls, and dates
-    combined_results = []
-    for doc, url, meta in zip(documents, urls, metadatas):
-        date_str = meta['date']
-        date_obj = datetime.fromisoformat(date_str)  # Convert to datetime object (removing 'Z')
-        combined_results.append((date_obj, doc, url))
-    
-    # Sort by date (latest first)
-    sorted_results = sorted(combined_results, key=lambda x: x[0], reverse=True)
-    return sorted_results
+def find_most_interesting_news():
+    keywords = ["legal", "lawsuit", "regulation", "merger", "acquisition", "court", "law", "contract"]
 
-def search_vectordb(query, k=3):
-    if 'News_Bot_VectorDB' in st.session_state:
-        collection = st.session_state.News_Bot_VectorDB
-        openai_client = OpenAI(api_key=st.secrets['key1'])
+    # Generate embeddings for keywords
+    openai_client = OpenAI(api_key=st.secrets['key1'])
+    keyword_embeddings = []
+    for keyword in keywords:
         response = openai_client.embeddings.create(
-            input=query,
+            input=keyword,
             model="text-embedding-3-small"
         )
-        query_embedding = response.data[0].embedding
+        keyword_embeddings.append(response.data[0].embedding)
+
+    # Combine keyword embeddings into a single embedding (mean of all keywords)
+    combined_embedding = [sum(x) / len(x) for x in zip(*keyword_embeddings)]
+
+    if 'News_Bot_VectorDB' in st.session_state:
+        collection = st.session_state.News_Bot_VectorDB
+        
+        # Retrieve documents using combined keyword embeddings
         results = collection.query(
-            query_embeddings=[query_embedding],
-            include=['documents', 'metadatas'],  # Exclude distances for simplicity
-            n_results=k
+            query_embeddings=[combined_embedding],
+            include=['documents', 'metadatas'],
+            n_results=100  # Adjust this number as needed
         )
-        return results
+        
+        interesting_articles = []
+        for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
+            date_str = meta['date']
+            keyword_frequency = calculate_keyword_frequency(doc, keywords)
+            recency_score = calculate_recency_score(date_str)
+            interesting_score = keyword_frequency * 0.7 + recency_score * 0.3  # Weighted score
+            
+            interesting_articles.append((date_str, doc, meta['id'], interesting_score))
+        
+        # Sort by the interesting score
+        interesting_articles.sort(key=lambda x: x[3], reverse=True)
+        
+        return interesting_articles[:3]  # Return top 3 most interesting articles
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None
@@ -132,21 +146,24 @@ if prompt := st.chat_input("What would you like to know about the news?"):
         response_content = None
         
         if "interesting" in prompt.lower():
-            results = search_vectordb("most interesting news")
-            urls = results['metadatas']  # Extract URLs from the results
-            response_content = "Here are the most interesting news articles:\n" + "\n".join(urls)
+            interesting_news = find_most_interesting_news()
+            if interesting_news:
+                formatted_results = [
+                    f"{i + 1}. {doc} (Published on {date}) - [Link]({url})"
+                    for i, (date, doc, url, _) in enumerate(interesting_news)
+                ]
+                response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
+            else:
+                response_content = "No interesting news articles found."
         elif "find news about" in prompt.lower():
             topic = prompt.lower().split("find news about")[-1].strip()
             results = search_vectordb(topic)
-            #st.write(results)
-            #urls = results['metadatas']  # Extract URLs from the results
-
             sorted_results = sort_results_by_date(results)
-    
-            # Format the sorted results for response
-            formatted_results = []
-            for i, (date, document, url) in enumerate(sorted_results):
-                formatted_results.append(f"{i + 1}. {document} (Published on {date.strftime('%Y-%m-%d %H:%M:%S')}) - [Link]({url})")            
+
+            formatted_results = [
+                f"{i + 1}. {document} (Published on {date}) - [Link]({url})"
+                for i, (date, document, url) in enumerate(sorted_results)
+            ]
             response_content = f"Here are news articles about '{topic}':\n" + "\n".join(formatted_results)
         else:
             response_content = "I'm sorry, I can only help with finding interesting news or news about a specific topic."

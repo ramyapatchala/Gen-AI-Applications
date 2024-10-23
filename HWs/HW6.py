@@ -22,7 +22,8 @@ def verify_openai_key(api_key):
 
 # Vector DB functions
 def add_to_collection(collection, text, filename):
-    response = openai.Embedding.create(
+    openai_client = OpenAI(api_key = st.secrets['key1'])
+    response = openai_client.embeddings.create(
         input=text,
         model="text-embedding-3-small"
     )
@@ -67,18 +68,17 @@ def setup_vectordb():
 def search_vectordb(query, k=3):
     if 'NewsBot_vectorDB' in st.session_state:
         collection = st.session_state.NewsBot_vectorDB
-        response = openai.Embedding.create(
+        openai_client = OpenAI(api_key = st.secrets['key1'])
+        response = openai_client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
         )
-        query_embedding = response['data'][0]['embedding']
-        
-        with st.spinner('Retrieving information from the database...'):
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                include=['documents', 'distances', 'metadatas'],
-                n_results=k
-            )
+        query_embedding = response.data[0].embedding
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            include=['documents', 'distances', 'metadatas'],
+            n_results=k
+        )
         return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")

@@ -146,13 +146,10 @@ if option == "Interesting News":
     results = find_most_interesting_news()
     if results:
         sorted_results = sort_results_by_date(results)
-        documents = sorted_results["documents"][0]
-        metadatas = sorted_results["metadatas"][0]
-        ids = sorted_results["ids"][0]
-        formatted_results = []
-        for i, (doc, metadata, url) in enumerate(zip(documents, metadatas, ids)):
-            date = metadata.get('date', 'Unknown Date')
-            formatted_results.append(f"{i + 1}. {doc[:200]}... (Published on {date}) - [Link]({url})")
+        formatted_results = [
+                    f"{i + 1}. {document[:200]}... (Published on {date}) - [Link]({url})"
+                    for i, (date, document, url) in enumerate(sorted_results)
+        ]
         response_content = "Here are the most interesting news articles:\n" + "\n".join(formatted_results)
         st.markdown(response_content)
     else:

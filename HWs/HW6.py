@@ -74,7 +74,7 @@ def search_vectordb(query, k=3):
             include=['documents', 'metadatas'],  # Exclude distances for simplicity
             n_results=k
         )
-
+        st.write(results)
         sorted_results = sorted(
             zip(results['documents'][0], results['metadatas'], results['ids'][0]), 
             key=lambda x: (x[1]['date'], x[0]),  # Sort first by date, then by document relevance

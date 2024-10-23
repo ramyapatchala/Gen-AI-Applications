@@ -82,6 +82,8 @@ def find_most_interesting_news():
             include=['documents', 'metadatas'],
             n_results=3  # Adjust this number as needed
         )
+
+        st.write(results)
         return results
     else:
         st.error("VectorDB not set up. Please set up the VectorDB first.")
